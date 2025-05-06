@@ -5,12 +5,16 @@ import 'package:app_for_traveler/screens/myPageScreen.dart';
 import 'package:app_for_traveler/screens/boardScreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_for_traveler/models/place.dart';
+import 'dart:async';
+import 'package:app_for_traveler/services/disaster_api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'notificationScreen.dart';
 
-// 앱의 메인 화면 StatefulWidget
-// 역할: 네비게이션 바로 홈, 지도, 게시판, 마이페이지 전환 관리
 class HomeScreen extends StatefulWidget {
-  final String currentUserId; // 현재 사용자 ID
-  final Function(String?) onLogout; // 로그아웃 콜백
+  final String currentUserId;
+  final Function(String?) onLogout;
 
   const HomeScreen({
     super.key,
@@ -22,25 +26,181 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-// HomeScreen 상태 관리 클래스
-// 역할: 네비게이션 상태와 사용자 닉네임 관리
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // 현재 네비게이션 인덱스
-  String? _selectedPlaceId; // 지도 화면 장소 ID
-  String? _currentUserNickname; // 사용자 닉네임
+  int _selectedIndex = 0;
+  String? _selectedPlaceId;
+  String? _currentUserNickname;
+  Timer? _disasterCheckTimer;
+  Set<int> _shownDisasterSNs = {};
+  List<Map<String, dynamic>> _disasterAlerts = [];
+  List<Map<String, dynamic>> _commentAlerts = [];
 
-  // initState: 위젯 초기화, 닉네임 조회 시작
-  // 역할: 데이터 초기화
-  // 분류: 로직
   @override
   void initState() {
     super.initState();
     _fetchCurrentUserNickname();
+    _checkAndResetSNsIfNewDay();
+    _startDisasterCheckTimer();
+    _loadAllAlerts();
   }
 
-  // _fetchCurrentUserNickname: Firestore에서 닉네임 가져와 상태 업데이트
-  // 역할: 사용자 데이터 조회
-  // 분류: 로직
+  Future<void> _loadAllAlerts() async {
+    final disasters = await _loadDisasterAlerts();
+    final comments = await _loadCommentAlerts(widget.currentUserId);
+    setState(() {
+      _disasterAlerts = disasters;
+      _commentAlerts = comments;
+    });
+  }
+
+  Future<void> _checkAndResetSNsIfNewDay() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = _generateTodayKey();
+    final lastSeenDate = prefs.getString('last_seen_date');
+
+    if (lastSeenDate != today) {
+      await prefs.remove('shown_sn_list');
+      await prefs.remove('sn_time_map');
+      await prefs.setString('last_seen_date', today);
+    }
+
+    final savedSnList = prefs.getStringList('shown_sn_list') ?? [];
+    setState(() {
+      _shownDisasterSNs = savedSnList.map(int.parse).toSet();
+    });
+  }
+
+  String _generateTodayKey() {
+    final now = DateTime.now();
+    return '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _saveShownDisasterSNs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'shown_sn_list',
+      _shownDisasterSNs.map((e) => e.toString()).toList(),
+    );
+  }
+
+  void _startDisasterCheckTimer() {
+    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      try {
+        final disasters = await DisasterApiService.fetchTodayDisasterMessages();
+        for (final item in disasters) {
+          final int sn = item['sn'];
+          final String msg = item['msg'];
+
+          if (!_shownDisasterSNs.contains(sn)) {
+            _shownDisasterSNs.add(sn);
+            await _saveShownDisasterSNs();
+            if (mounted) _showDisasterAlert(msg);
+          }
+        }
+      } catch (e) {
+        print('재난 문자 확인 중 오류: $e');
+      }
+    });
+  }
+
+  void _showDisasterAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('📢 새로운 재난 문자'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadDisasterAlerts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedSnList = prefs.getStringList('shown_sn_list') ?? [];
+    final savedTimeMap = prefs.getString('sn_time_map');
+    final timeMap = savedTimeMap != null ? jsonDecode(savedTimeMap) as Map<String, dynamic> : {};
+
+    final disasters = await DisasterApiService.fetchTodayDisasterMessages();
+
+    for (var d in disasters) {
+      final snStr = d['sn'].toString();
+      if (!timeMap.containsKey(snStr)) {
+        timeMap[snStr] = (d['timestamp'] as DateTime).toIso8601String();
+      }
+    }
+
+    await prefs.setString('sn_time_map', jsonEncode(timeMap));
+
+    return disasters
+        .where((d) => savedSnList.contains(d['sn'].toString()))
+        .map((d) {
+          final snStr = d['sn'].toString();
+          final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
+          return {
+            'sn': d['sn'],
+            'message': d['msg'],
+            'timestamp': t,
+          };
+        })
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCommentAlerts(String currentUserId) async {
+    final firestore = FirebaseFirestore.instance;
+
+    final myPostsSnapshot = await firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: currentUserId)
+        .get();
+
+    List<Map<String, dynamic>> alerts = [];
+
+    for (var postDoc in myPostsSnapshot.docs) {
+      final postId = postDoc.id;
+      final postData = postDoc.data();
+      final postTitle = postData['title'] ?? '';
+      final postContent = postData['content'] ?? '';
+      final postCreatedAt = (postData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+      final postAuthorNickname = postData['authorNickname'] ?? '알 수 없음';
+
+      final commentSnapshot = await firestore
+          .collection('comments')
+          .where('postId', isEqualTo: postId)
+          .orderBy('createdAt', descending: true)
+          .limit(10)
+          .get();
+
+      for (var commentDoc in commentSnapshot.docs) {
+        final commentData = commentDoc.data();
+        if (commentData['authorId'] != currentUserId) {
+          alerts.add({
+            'nickname': commentData['authorNickname'] ?? '알 수 없음',
+            'postId': postId,
+            'postTitle': postTitle,
+            'postContent': postContent,
+            'postAuthorId': currentUserId,
+            'postAuthorNickname': postAuthorNickname,
+            'postCreatedAt': postCreatedAt,
+            'timestamp': (commentData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          });
+        }
+      }
+    }
+
+    return alerts;
+  }
+
+  @override
+  void dispose() {
+    _disasterCheckTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _fetchCurrentUserNickname() async {
     try {
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(widget.currentUserId).get();
@@ -60,9 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // _onItemTapped: 네비게이션 바 탭 처리, 인덱스 및 장소 ID 업데이트
-  // 역할: 네비게이션 관리
-  // 분류: 로직
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -72,9 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // build: AppBar, 네비게이션 바, 선택된 화면 UI 렌더링
-  // 역할: 화면 UI 구성
-  // 분류: 디자인
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,7 +239,19 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => NotificationScreen(
+                    disasterAlerts: _disasterAlerts,
+                    commentAlerts: _commentAlerts,
+                    currentUserId: widget.currentUserId,
+                    currentUserNickname: _currentUserNickname,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -131,6 +297,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
 
 // 홈 화면 콘텐츠 StatefulWidget
 // 역할: 추천, 인기 장소, 최근 게시물 표시

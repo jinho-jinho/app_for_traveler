@@ -3,13 +3,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_for_traveler/screens/homeScreen.dart';
 import 'package:app_for_traveler/screens/loginScreen.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 // 앱 진입점
 // 역할: Firebase 초기화 및 앱 실행
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Firebase 초기화
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    
+  );
   runApp(const MyApp());
 }
 
@@ -73,6 +76,9 @@ class _MyAppState extends State<MyApp> {
           ? LoginScreen(onLogin: _setCurrentUser)
           : HomeScreen(currentUserId: _currentUserId!, onLogout: _setCurrentUser),
       localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
         Locale('ko', 'KR'),
