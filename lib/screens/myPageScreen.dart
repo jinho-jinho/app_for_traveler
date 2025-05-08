@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_for_traveler/screens/loginScreen.dart';
+import 'package:app_for_traveler/screens/postDetailScreen.dart';
 
-// 마이페이지 화면 StatefulWidget
-// 역할: 사용자 프로필 관리 및 찜한 장소 목록 표시
 class MyPageScreen extends StatefulWidget {
-  final String currentUserId; // 현재 사용자 ID
-  final Function(String?) onLogout; // 로그아웃 콜백
-  final Function(String) onPlaceSelected; // 장소 선택 콜백
+  final String currentUserId;
+  final Function(String?) onLogout;
+  final Function(String) onPlaceSelected;
 
   const MyPageScreen({
     super.key,
@@ -22,58 +21,41 @@ class MyPageScreen extends StatefulWidget {
   _MyPageScreenState createState() => _MyPageScreenState();
 }
 
-// MyPageScreen 상태 관리 클래스
-// 역할: 닉네임, 찜 목록, 에러 메시지 관리 및 실시간 데이터 리스닝
 class _MyPageScreenState extends State<MyPageScreen> {
   final TextEditingController _nicknameController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  String? _nickname; // 사용자 닉네임
-  String? _errorMessage; // 에러 메시지
-  List<String> _favorites = []; // 찜한 장소 ID 목록
-  StreamSubscription<DocumentSnapshot>? _userSubscription; // Firestore 실시간 리스너
+  String? _nickname;
+  List<String> _favorites = [];
+  List<DocumentSnapshot> _myPosts = [];
+  List<DocumentSnapshot> _myComments = [];
+  StreamSubscription<DocumentSnapshot>? _userSubscription;
 
-  // initState: 위젯 초기화, 사용자 데이터 로드 및 실시간 리스너 설정
-  // 역할: 초기 데이터 로드 및 리스너 초기화
-  // 분류: 로직
   @override
   void initState() {
     super.initState();
     _loadUserData();
     _setupRealtimeListener();
+    _loadMyPosts();
+    _loadMyCommentedPosts();
   }
 
-  // dispose: 리스너 해제 및 리소스 정리
-  // 역할: 리스너 종료
-  // 분류: 로직
   @override
   void dispose() {
     _userSubscription?.cancel();
     super.dispose();
   }
 
-  // _loadUserData: Firestore에서 사용자 데이터(닉네임, 찜 목록) 로드
-  // 역할: 초기 사용자 데이터 조회 및 상태 업데이트
-  // 분류: 로직
   Future<void> _loadUserData() async {
-    try {
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-      if (userDoc.exists) {
-        setState(() {
-          _nickname = userDoc['nickname'] ?? widget.currentUserId;
-          _nicknameController.text = _nickname!;
-          _favorites = List<String>.from(userDoc['favorites'] ?? []);
-        });
-      }
-    } catch (e) {
+    DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
+    if (userDoc.exists) {
       setState(() {
-        _errorMessage = '사용자 데이터를 불러오는 중 오류가 발생했습니다: $e';
+        _nickname = userDoc['nickname'] ?? widget.currentUserId;
+        _nicknameController.text = _nickname!;
+        _favorites = List<String>.from(userDoc['favorites'] ?? []);
       });
     }
   }
 
-  // _setupRealtimeListener: Firestore 실시간 리스너 설정
-  // 역할: 사용자 찜 목록 실시간 업데이트
-  // 분류: 로직
   void _setupRealtimeListener() {
     _userSubscription = _firestore.collection('users').doc(widget.currentUserId).snapshots().listen((snapshot) {
       if (snapshot.exists) {
@@ -81,156 +63,181 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _favorites = List<String>.from(snapshot['favorites'] ?? []);
         });
       }
-    }, onError: (e) {
-      setState(() {
-        _errorMessage = '실시간 데이터 감지 중 오류가 발생했습니다: $e';
-      });
     });
   }
 
-  // _updateNickname: Firestore에 닉네임 업데이트
-  // 역할: 사용자 닉네임 수정 및 저장
-  // 분류: 로직
-  Future<void> _updateNickname() async {
-    String newNickname = _nicknameController.text.trim();
-    if (newNickname.isEmpty) {
-      setState(() {
-        _errorMessage = '닉네임을 입력해주세요.';
-      });
-      return;
-    }
-
-    try {
-      await _firestore.collection('users').doc(widget.currentUserId).update({
-        'nickname': newNickname,
-      });
-      setState(() {
-        _nickname = newNickname;
-        _errorMessage = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('닉네임이 업데이트되었습니다.')),
-      );
-    } catch (e) {
-      setState(() {
-        _errorMessage = '닉네임 업데이트 중 오류가 발생했습니다: $e';
-      });
-    }
+  Future<void> _loadMyPosts() async {
+    final snapshot = await _firestore
+        .collection('posts')
+        .where('authorId', isEqualTo: widget.currentUserId)
+        .get();
+    setState(() {
+      _myPosts = snapshot.docs;
+    });
   }
 
-  // _logout: 로그아웃 처리 및 로그인 화면으로 이동
-  // 역할: 사용자 로그아웃 및 네비게이션
-  // 분류: 로직
-  Future<void> _logout() async {
-    widget.onLogout(null);
-    Navigator.pushReplacement(
+  Future<void> _loadMyCommentedPosts() async {
+    final commentSnapshot = await _firestore
+        .collection('comments')
+        .where('authorId', isEqualTo: widget.currentUserId)
+        .get();
+
+    final postIds = commentSnapshot.docs.map((doc) => doc['postId'] as String).toSet().toList();
+    if (postIds.isEmpty) return;
+
+    List<DocumentSnapshot> allPosts = [];
+    for (var i = 0; i < postIds.length; i += 10) {
+      final chunk = postIds.sublist(i, (i + 10).clamp(0, postIds.length));
+      final postSnapshot = await _firestore
+          .collection('posts')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+      allPosts.addAll(postSnapshot.docs);
+    }
+
+    setState(() {
+      _myComments = allPosts;
+    });
+  }
+
+  void _showSimpleList(String title, List<DocumentSnapshot> docs) {
+    Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => LoginScreen(onLogin: widget.onLogout)),
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              return ListTile(
+                title: Text(data['title'] ?? '제목 없음'),
+                subtitle: Text(data['content'] ?? ''),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PostDetailScreen(
+                      postId: docs[index].id,
+                      title: data['title'],
+                      content: data['content'],
+                      authorId: data['authorId'],
+                      authorNickname: data['authorNickname'],
+                      createdAt: (data['createdAt'] as Timestamp).toDate(),
+                      currentUserId: widget.currentUserId,
+                      currentUserNickname: _nickname,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 
-  // build: 프로필 및 찜 목록 탭 UI 렌더링
-  // 역할: 마이페이지 UI 구성
-  // 분류: 디자인
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('마이페이지 - ${widget.currentUserId}'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: '프로필'),
-              Tab(text: '찜한 목록'),
-            ],
+  void _showFavorites() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('즐겨찾기한 장소')),
+          body: ListView(
+            children: _favorites.map((placeId) {
+              return FutureBuilder<DocumentSnapshot>(
+                future: _firestore.collection('places').doc(placeId).get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) return const ListTile(title: Text('로딩 중...'));
+                  if (!snapshot.hasData || !snapshot.data!.exists) return ListTile(title: Text(placeId));
+                  final data = snapshot.data!.data() as Map<String, dynamic>;
+                  return ListTile(
+                    title: Text(data['name'] ?? placeId),
+                    onTap: () => widget.onPlaceSelected(placeId),
+                  );
+                },
+              );
+            }).toList(),
           ),
         ),
-        body: TabBarView(
-          children: [
-            // 프로필 탭: 닉네임 수정 및 로그아웃 UI
-            // 역할: 사용자 프로필 정보 표시 및 수정
-            // 분류: 디자인
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '닉네임',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('마이페이지')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ListTile(
+            title: const Text('여행 스케줄'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              // TODO: 여행 스케줄 화면으로 이동
+            },
+          ),
+          ListTile(
+            title: const Text('닉네임 설정'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('닉네임 설정'),
+                  content: TextField(
+                    controller: _nicknameController,
+                    decoration: const InputDecoration(hintText: '닉네임 입력'),
                   ),
-                  const SizedBox(height: 8.0),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _nicknameController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      ElevatedButton(
-                        onPressed: _updateNickname,
-                        child: const Text('수정'),
-                      ),
-                    ],
-                  ),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('취소'),
                     ),
-                  const Spacer(),
-                  Align(
-                    alignment: Alignment.center,
-                    child: TextButton(
-                      onPressed: _logout,
-                      child: const Text('로그아웃'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 찜한 목록 탭: 찜한 장소 목록 표시
-            // 역할: 찜한 장소 목록 UI 표시
-            // 분류: 디자인
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: _favorites.isEmpty
-                  ? const Center(child: Text('찜한 목록이 없습니다.'))
-                  : ListView.builder(
-                      itemCount: _favorites.length,
-                      itemBuilder: (context, index) {
-                        final placeId = _favorites[index];
-                        return ListTile(
-                          title: FutureBuilder<DocumentSnapshot>(
-                            future: _firestore.collection('places').doc(placeId).get(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Text('로딩 중...');
-                              }
-                              if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-                                return Text(placeId);
-                              }
-                              final placeData = snapshot.data!.data() as Map<String, dynamic>;
-                              return Text(placeData['name'] as String? ?? placeId);
-                            },
-                          ),
-                          onTap: () {
-                            widget.onPlaceSelected(placeId);
-                          },
-                        );
+                    ElevatedButton(
+                      onPressed: () async {
+                        await _firestore.collection('users').doc(widget.currentUserId).update({
+                          'nickname': _nicknameController.text.trim(),
+                        });
+                        setState(() => _nickname = _nicknameController.text.trim());
+                        Navigator.pop(context);
                       },
+                      child: const Text('저장'),
                     ),
+                  ],
+                ),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('즐겨찾기 한 장소'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _showFavorites,
+          ),
+          ListTile(
+            title: const Text('내가 쓴 글 조회'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showSimpleList('내가 쓴 글', _myPosts),
+          ),
+          ListTile(
+            title: const Text('댓글 단 글 조회'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showSimpleList('댓글 단 글', _myComments),
+          ),
+          const SizedBox(height: 32),
+          Center(
+            child: TextButton(
+              onPressed: () async {
+                widget.onLogout(null);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
+                );
+              },
+              child: const Text('로그아웃'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
