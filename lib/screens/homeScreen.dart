@@ -10,7 +10,185 @@ import 'package:app_for_traveler/services/disaster_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'companionListScreen.dart';
 import 'notificationScreen.dart';
+import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
+import '../companionCard.dart';
+import 'companionListScreen.dart';
+
+
+class CompanionCard extends StatelessWidget {
+  final String title;
+  final String destination;
+  final String content;
+  final int currentCount;
+  final int maxCount;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool isClosed;
+
+  const CompanionCard({
+    super.key,
+    required this.title,
+    required this.destination,
+    required this.content,
+    required this.currentCount,
+    required this.maxCount,
+    required this.startDate,
+    required this.endDate,
+    required this.isClosed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFormat = DateFormat('yyyy.MM.dd');
+    final dateRange = '${dateFormat.format(startDate)} ~ ${dateFormat.format(endDate)}';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.groups, color: Colors.blue),
+                const SizedBox(width: 6),
+                Text('$currentCount / $maxCount'),
+                const Spacer(),
+                if (isClosed)
+                  const Text('모집 마감', style: TextStyle(color: Colors.red)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(dateRange, style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 8),
+            Text(content, maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TravelMateSection extends StatefulWidget {
+  final String currentUserId;
+
+  const TravelMateSection({super.key, required this.currentUserId});
+
+  @override
+  State<TravelMateSection> createState() => _TravelMateSectionState();
+}
+
+class _TravelMateSectionState extends State<TravelMateSection> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<Map<String, dynamic>> _companions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCompanions();
+  }
+
+  Future<void> _fetchCompanions() async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('companions')
+          .orderBy('createdAt', descending: true)
+          .limit(3)
+          .get();
+
+      final data = snapshot.docs.map((doc) {
+        final d = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'title': d['title'] ?? '제목 없음',
+          'destination': d['destination'] ?? '여행지 미정',
+          'content': d['content'] ?? '',
+          'currentCount': d['currentCount'] ?? 1,
+          'maxCount': d['maxCount'] ?? 4,
+          'startDate': (d['startDate'] as Timestamp).toDate(),
+          'endDate': (d['endDate'] as Timestamp).toDate(),
+          'isClosed': d['isClosed'] is bool ? d['isClosed'] : false,
+        };
+      }).toList();
+
+      setState(() {
+        _companions = data;
+      });
+    } catch (e) {
+      print('🔥 동행자 로드 실패: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text('동행자 구해요 👋', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 12),
+        if (_companions.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text('현재 모집 중인 동행이 없습니다.', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          ..._companions.map((c) => GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompanionDetailScreen(
+                    companionId: c['id'],
+                    currentUserId: widget.currentUserId,
+                  ),
+                ),
+              );
+            },
+            child: CompanionCard(
+              title: c['title'],
+              destination: c['destination'],
+              content: c['content'],
+              currentCount: c['currentCount'],
+              maxCount: c['maxCount'],
+              startDate: c['startDate'],
+              endDate: c['endDate'],
+              isClosed: c['isClosed'],
+            ),
+          )),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CompanionListScreen(currentUserId: widget.currentUserId),
+                ),
+              );
+            },
+            child: const Text('더 많은 동행 보기...', style: TextStyle(fontSize: 14)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
 
 class HomeScreen extends StatefulWidget {
   final String currentUserId;
@@ -256,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _selectedIndex == 0
-          ? const HomeContent()
+          ? HomeContent(currentUserId: widget.currentUserId) // 🔥 여기에 전달
           : _selectedIndex == 1
               ? MapScreen(
                   currentUserId: widget.currentUserId,
@@ -303,11 +481,13 @@ class _HomeScreenState extends State<HomeScreen> {
 // 홈 화면 콘텐츠 StatefulWidget
 // 역할: 추천, 인기 장소, 최근 게시물 표시
 class HomeContent extends StatefulWidget {
-  const HomeContent({super.key});
+  final String currentUserId;
+  const HomeContent({super.key, required this.currentUserId});
 
   @override
   _HomeContentState createState() => _HomeContentState();
 }
+
 
 // HomeContent 상태 관리 클래스
 // 역할: Firestore 데이터 가져와 UI 업데이트
@@ -513,6 +693,9 @@ class _HomeContentState extends State<HomeContent> {
               ],
             ),
           ),
+          const SizedBox(height: 30),
+
+          TravelMateSection(currentUserId: widget.currentUserId),
           const SizedBox(height: 30),
           // 최근 게시물 섹션: 최신 3개 게시물 표시 및 게시판 이동
           // 역할: 게시물 UI 표시
