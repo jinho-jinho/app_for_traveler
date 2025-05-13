@@ -34,6 +34,11 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // 중복 파일 처리 설정 추가
+    packaging {
+        resources.excludes.add("META-INF.meta")
+    }
 }
 
 dependencies {
