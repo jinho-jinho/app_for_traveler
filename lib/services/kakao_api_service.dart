@@ -66,6 +66,13 @@ class KakaoApiService {
     return _fetchPlacesByKeyword('물품 보관함', '편의시설', '물품 보관함');
   }
 
+  // fetchTouristAttractions: 관광 명소 데이터 가져오기
+  // 역할: 카테고리 API로 관광 명소 데이터 조회
+  // 분류: 로직
+  Future<List<Place>> fetchTouristAttractions() async {
+    return _fetchPlacesByCategory('AT4', '관광 명소', '관광 명소');
+  }
+
   // _fetchPlacesByCategory: 카테고리별 장소 데이터 가져오기
   // 역할: 카카오맵 카테고리 API 호출로 장소 목록 생성
   // 분류: 로직
