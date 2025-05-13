@@ -11,6 +11,7 @@ class Place {
   final List<Review> reviews;
   final List<String> reports;
   final bool isUserAdded;
+  final String? imageUri; // nullable로 추가
 
   Place({
     required this.id,
@@ -23,6 +24,7 @@ class Place {
     this.reviews = const [],
     this.reports = const [],
     this.isUserAdded = false,
+    this.imageUri,
   });
 }
 
@@ -31,11 +33,13 @@ class Review {
   final double rating;
   final String comment;
   int likes;
+  final String? imageUri; // 사진 첨부를 위한 URI
 
   Review({
     required this.userId,
     required this.rating,
     required this.comment,
     this.likes = 0,
+    this.imageUri,
   });
 }
