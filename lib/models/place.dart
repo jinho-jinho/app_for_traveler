@@ -11,7 +11,7 @@ class Place {
   final List<Review> reviews;
   final List<String> reports;
   final bool isUserAdded;
-  final String? imageUri; // nullable로 추가
+  final String? imageUri; // image 추가
 
   Place({
     required this.id,
@@ -24,7 +24,7 @@ class Place {
     this.reviews = const [],
     this.reports = const [],
     this.isUserAdded = false,
-    this.imageUri,
+    this.imageUri, // image 추가
   });
 }
 

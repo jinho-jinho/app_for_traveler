@@ -4,7 +4,7 @@
 
 // clang-format off
 
-#include "../../../../../app_for_traveler2/linux/flutter/generated_plugin_registrant.h"
+#include "generated_plugin_registrant.h"
 
 #include <file_selector_linux/file_selector_plugin.h>
 

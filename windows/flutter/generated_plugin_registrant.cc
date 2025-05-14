@@ -4,7 +4,7 @@
 
 // clang-format off
 
-#include "../../../../../app_for_traveler2/windows/flutter/generated_plugin_registrant.h"
+#include "generated_plugin_registrant.h"
 
 #include <cloud_firestore/cloud_firestore_plugin_c_api.h>
 #include <file_selector_windows/file_selector_windows.h>
