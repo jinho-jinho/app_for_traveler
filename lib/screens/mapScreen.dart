@@ -7,6 +7,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io'; // File 클래스용
+import 'package:image_picker/image_picker.dart'; // 이미지 피커 관련
+import 'package:firebase_storage/firebase_storage.dart';
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -325,18 +328,22 @@ class _MapScreenState extends State<MapScreen> {
         await _setKakaoDataSynced();
       }
 
+      // imageUri 추가
       final userPlacesSnapshot = await _firestore.collection('places').get();
 
       final userPlaces = userPlacesSnapshot.docs.map((doc) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
+
         List<Review> reviews = [];
         if (data['reviews'] != null) {
-          reviews = (data['reviews'] as List).map((reviewData) {
+          reviews = (data['reviews'] as List).map((raw) {
+            final reviewData = raw as Map<String, dynamic>;
             return Review(
               userId: reviewData['userId'] as String,
-              rating: reviewData['rating']?.toDouble() ?? 0.0,
+              rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
               comment: reviewData['comment'] as String,
-              likes: reviewData['likes']?.toInt() ?? 0,
+              likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
+              imageUri: reviewData['imageUri'] as String?,  // ← 여기서 읽어오기
             );
           }).toList();
         }
@@ -547,6 +554,41 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  // 이미지 -> 파이어베이스 연동
+  Future<String?> uploadImageToFirebase(File imageFile) async {
+    try {
+      final fileName = 'review_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(imageFile);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      print('이미지 업로드 실패: $e');
+      return null;
+    }
+  }
+
+  // 이미지 전체 보기 다이얼로그
+  void _showImagePreview(String imagePath) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: EdgeInsets.zero,       // 화면 가득
+        child: SizedBox.expand(
+          child: InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Image.file(
+              File(imagePath),
+              fit: BoxFit.contain,            // 꽉 차게
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+
   // _showPlaceDetailsBottomSheet: 장소 세부 정보 바텀시트 표시
   // 역할: 장소 정보, 리뷰, 찜 버튼 UI 표시
   // 분류: 디자인
@@ -577,6 +619,7 @@ class _MapScreenState extends State<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ────────────────────────── 헤더 (이름 + 찜 버튼)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -597,6 +640,7 @@ class _MapScreenState extends State<MapScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 평균 별점
                         Text('평균 별점: ${averageRating.toStringAsFixed(1)}'),
                         RatingBarIndicator(
                           rating: averageRating,
@@ -609,31 +653,114 @@ class _MapScreenState extends State<MapScreen> {
                           direction: Axis.horizontal,
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 리뷰 목록
                         const Text('코멘트:', style: TextStyle(fontWeight: FontWeight.bold)),
                         Expanded(
                           child: place.reviews.isEmpty
                               ? const Center(child: Text('코멘트가 없습니다.'))
                               : ListView.builder(
-                                  itemCount: place.reviews.length,
-                                  itemBuilder: (context, index) {
-                                    final review = place.reviews[index];
-                                    return ListTile(
-                                      title: Text('별점: ${review.rating.toString()}'),
-                                      subtitle: Text(review.comment),
-                                      trailing: FutureBuilder<String>(
-                                        future: _getNickname(review.userId),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.waiting) {
-                                            return const Text('로딩 중...');
-                                          }
-                                          return Text('작성자: ${snapshot.data ?? review.userId}');
-                                        },
-                                      ),
+                            itemCount: place.reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = place.reviews[index];
+                              return ListTile(
+                                // 별점과 코멘트 + 이미지 표시
+                                title: Text('별점: ${review.rating}'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(review.comment),
+                                    if (review.imageUri != null) ... [
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () => _showImagePreview(review.imageUri!),
+                                        child: ClipRRect (
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.file(
+                                            File(review.imageUri!),
+                                            height: 100,
+                                            width: 100,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    ]
+                                    /*Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Image.file(
+                                          File(review.imageUri!),
+                                          height: 100,
+                                          width: 100,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),*/
+                                  ],
+                                ),
+                                // 작성자 + (본인 글이면) 삭제 버튼
+                                trailing: FutureBuilder<String>(
+                                  future: _getNickname(review.userId),
+                                  builder: (context, nickSnap) {
+                                    if (nickSnap.connectionState == ConnectionState.waiting) {
+                                      return const Text('로딩 중...');
+                                    }
+                                    final nickname = nickSnap.data ?? review.userId;
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('작성자: $nickname'),
+                                        const SizedBox(width: 8),
+                                        if (widget.currentUserId == review.userId)
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                            onPressed: () async {
+                                              // 삭제 확인 다이얼로그
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('리뷰 삭제'),
+                                                  content: const Text('이 리뷰를 삭제하시겠습니까?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: const Text('취소'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      child: const Text('삭제'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+
+                                              if (confirm == true) {
+                                                // 로컬 리스트에서 제거
+                                                place.reviews.removeAt(index);
+                                                // Firestore 업데이트
+                                                await _firestore
+                                                    .collection('places')
+                                                    .doc(place.id)
+                                                    .update({
+                                                  'reviews': place.reviews.map((r) => {
+                                                    'userId': r.userId,
+                                                    'rating': r.rating,
+                                                    'comment': r.comment,
+                                                    'likes': r.likes,
+                                                    'imageUri': r.imageUri?.toString(),
+                                                  }).toList(),
+                                                });
+                                                setState(() {}); // UI 갱신
+                                              }
+                                            },
+                                          ),
+                                      ],
                                     );
                                   },
                                 ),
+                              );
+                            },
+                          ),
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 코멘트 추가 버튼
                         Center(
                           child: ElevatedButton(
                             onPressed: () {
@@ -684,6 +811,10 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
+    // ImagePicker 인스턴스와 선택된 파일 참조
+    final ImagePicker _picker = ImagePicker();
+    XFile? pickedImage;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -695,6 +826,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 별점 입력
                     RatingBar.builder(
                       initialRating: newRating,
                       minRating: 1,
@@ -711,6 +843,7 @@ class _MapScreenState extends State<MapScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
+                    // 코멘트 입력
                     TextField(
                       controller: commentController,
                       decoration: const InputDecoration(
@@ -719,6 +852,47 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       maxLines: 3,
                     ),
+                    const SizedBox(height: 10),
+
+                    // 사진 첨부 버튼
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.photo),
+                      label: const Text('사진 첨부'),
+                      onPressed: () async {
+                        final XFile? image = await _picker.pickImage(
+                          source: ImageSource.gallery,
+                          maxWidth: 800,
+                          imageQuality: 80,
+                        );
+                        if (image != null) {
+                          setState(() => pickedImage = image);
+                        }
+                      },
+                    ),
+
+                    // 첨부 사진 미리보기
+                    if (pickedImage != null) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          // 다이얼로그로 전체 보기
+                          showDialog(
+                            context: context,
+                            builder: (_) => Dialog(
+                              child: InteractiveViewer(
+                                child: Image.file(File(pickedImage!.path)),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Image.file(
+                          File(pickedImage!.path),
+                          height: 100,
+                          width: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -739,6 +913,7 @@ class _MapScreenState extends State<MapScreen> {
                         rating: newRating,
                         comment: commentController.text,
                         likes: 0,
+                        imageUri: pickedImage?.path, // imageUri 추가
                       );
 
                       DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get();
@@ -750,6 +925,7 @@ class _MapScreenState extends State<MapScreen> {
                             rating: reviewData['rating']?.toDouble() ?? 0.0,
                             comment: reviewData['comment'] as String,
                             likes: reviewData['likes']?.toInt() ?? 0,
+                            imageUri: reviewData['imageUri'], // imageUri 추가
                           );
                         }).toList();
                       }
@@ -758,11 +934,12 @@ class _MapScreenState extends State<MapScreen> {
 
                       await _firestore.collection('places').doc(place.id).update({
                         'reviews': reviews.map((r) => {
-                              'userId': r.userId,
-                              'rating': r.rating,
-                              'comment': r.comment,
-                              'likes': r.likes,
-                            }).toList(),
+                          'userId': r.userId,
+                          'rating': r.rating,
+                          'comment': r.comment,
+                          'likes': r.likes,
+                          'imageUri': r.imageUri, // imageUri 추가
+                        }).toList(),
                       });
 
                       await _fetchData();
@@ -818,12 +995,12 @@ class _MapScreenState extends State<MapScreen> {
                     ElevatedButton(
                       onPressed: selectedCategory != null
                           ? () {
-                              Navigator.pop(context);
-                              _showLocationPickerDialog(
-                                selectedCategory!,
-                                selectedCategory!,
-                              );
-                            }
+                        Navigator.pop(context);
+                        _showLocationPickerDialog(
+                          selectedCategory!,
+                          selectedCategory!,
+                        );
+                      }
                           : null,
                       child: const Text('위치 선택'),
                     ),
@@ -1158,15 +1335,15 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           _isMapVisible
               ? GoogleMap(
-                  onMapCreated: _onMapCreated,
-                  initialCameraPosition: const CameraPosition(
-                    target: initialPosition,
-                    zoom: 12,
-                  ),
-                  markers: _createMarkers(),
-                  myLocationEnabled: _locationPermissionGranted,
-                  myLocationButtonEnabled: true,
-                )
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: const CameraPosition(
+              target: initialPosition,
+              zoom: 12,
+            ),
+            markers: _createMarkers(),
+            myLocationEnabled: _locationPermissionGranted,
+            myLocationButtonEnabled: true,
+          )
               : const Center(child: Text('지도 로드 대기 중...')),
           Positioned(
             top: 10,
