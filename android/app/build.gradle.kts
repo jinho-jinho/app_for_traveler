@@ -1,9 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // Add the Google services Gradle plugin
     id("com.google.gms.google-services")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -34,16 +32,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // 중복 파일 처리 설정 (develop 브랜치에서 가져온 부분)
+    packaging {
+        resources.excludes.add("META-INF.meta")
+    }
 }
 
 dependencies {
-    // Import the Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:33.12.0"))
-
-    // Add the dependency for Firestore
     implementation("com.google.firebase:firebase-firestore")
-
-    // Add Firebase Analytics (optional, for tracking usage)
     implementation("com.google.firebase:firebase-analytics")
 }
 
