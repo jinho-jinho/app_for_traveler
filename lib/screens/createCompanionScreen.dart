@@ -114,7 +114,9 @@ class _CreateCompanionScreenState extends State<CreateCompanionScreen> {
               ),
               TextFormField(
                 controller: _contentController,
-                decoration: const InputDecoration(labelText: '부가 설명'),
+                decoration: const InputDecoration(
+                  labelText: '부가 설명',
+                  hintText: '참여 조건이나 여행 스타일을 적어주세요. 예) 여성만 모집합니다 / 조용한 여행 선호해요',),
                 maxLines: 3,
               ),
               TextFormField(
