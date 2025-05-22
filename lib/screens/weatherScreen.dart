@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -9,15 +11,39 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  final double latitude = 43.47;
-  final double longitude = 142.64;
+  var latitude = 0.0;
+  var longitude = 0.0;
 
-  late Future<Map<String, dynamic>> weatherData;
+  Future<Map<String, dynamic>>? weatherData;
 
   @override
   void initState() {
     super.initState();
-    weatherData = fetchWeatherData();
+    _loadWeather();
+  }
+
+  void _loadWeather() async {
+    final loc = await _getCurrentLocation();
+    if (loc != null) {
+      setState(() {
+        latitude = loc.latitude;
+        longitude = loc.longitude;
+        weatherData = fetchWeatherData();
+      });
+    }
+  }
+
+  Future<Position?> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return null;
+    }
+
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   Future<Map<String, dynamic>> fetchWeatherData() async {
@@ -65,14 +91,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
           FutureBuilder<Map<String, dynamic>>(
             future: weatherData,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.done) {
-                if (snapshot.hasData) {
-                  return weatherWidget(snapshot.data!);
-                } else {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-              } else {
+              if (weatherData == null) {
+                return const Center(child: Text("Loading location..."));
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else if (snapshot.hasData) {
+                return weatherWidget(snapshot.data!);
+              } else {
+                return const Center(child: Text('No weather data.'));
               }
             },
           ),
@@ -100,7 +129,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // 현재 날씨 카드
           Row(
             children: [
               Expanded(
@@ -127,26 +155,58 @@ class _WeatherScreenState extends State<WeatherScreen> {
               Expanded(
                 flex: 1,
                 child: Container(
+                  height: 210, // 고정 높이 or 필요시 맞춤 조정
                   decoration: BoxDecoration(
-                    color: Colors.blueGrey.withOpacity(0.8),
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    children: const [
-                      // 지도 좌표 선택 등 추가 예정
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/images/korea.png', // 원하는 이미지 경로
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Set Location',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: _showLocationPickerDialog,
+                              icon: const Icon(Icons.map),
+                              label: const Text('Pick on Map'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          // 시간별 예보
           Container(
-            height: 180, 
+            height: 180,
             decoration: BoxDecoration(
               color: Colors.blueGrey.withOpacity(0.6),
               borderRadius: BorderRadius.circular(24),
@@ -155,12 +215,10 @@ class _WeatherScreenState extends State<WeatherScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$todayLabel Hourly Forecast',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text('$todayLabel Hourly Forecast',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Expanded( 
+                Expanded(
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: 8,
@@ -178,15 +236,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(time),
-                            const SizedBox(height: 5,),
-                            Image.asset(
-                              iconPath,
-                              width: 40,
-                              errorBuilder: (context, _, __) =>
-                                  Image.asset('assets/weather/01d.png', width: 40),
-                            ),
-                            const SizedBox(height: 5,),
-                            Text('$temp°C', style: TextStyle(fontSize: 15),),
+                            const SizedBox(height: 5),
+                            Image.asset(iconPath, width: 40, errorBuilder: (_, __, ___) {
+                              return Image.asset('assets/weather/01d.png', width: 40);
+                            }),
+                            const SizedBox(height: 5),
+                            Text('$temp°C', style: const TextStyle(fontSize: 15)),
                           ],
                         ),
                       );
@@ -196,11 +251,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
               ],
             ),
           ),
-
-
           const SizedBox(height: 20),
-
-          // 일간 예보
           Container(
             decoration: BoxDecoration(
               color: Colors.blueGrey.withOpacity(0.6),
@@ -228,7 +279,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
     for (var item in forecastList) {
       final dt = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
       final dateKey = '${dt.year}-${dt.month}-${dt.day}';
-
       dailyMap.putIfAbsent(dateKey, () => []);
       dailyMap[dateKey]!.add(item);
     }
@@ -239,8 +289,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
     for (final key in keys) {
       final items = dailyMap[key]!;
 
-      double minTemp = items.first['main']['temp_min'];
-      double maxTemp = items.first['main']['temp_max'];
+      double minTemp = items.first['main']['temp_min'].toDouble();
+      double maxTemp = items.first['main']['temp_max'].toDouble();
       String icon = items.first['weather'][0]['icon'];
       final dtSample = DateTime.fromMillisecondsSinceEpoch(items.first['dt'] * 1000);
       final label = '${dtSample.month}/${dtSample.day}';
@@ -273,5 +323,63 @@ class _WeatherScreenState extends State<WeatherScreen> {
     }
 
     return widgets;
+  }
+
+  void _showLocationPickerDialog() {
+    LatLng initialMarkerPosition = LatLng(latitude, longitude);
+    LatLng selectedPosition = initialMarkerPosition;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Location'),
+          content: SizedBox(
+            height: 400,
+            width: 300,
+            child: Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: initialMarkerPosition,
+                    zoom: 15,
+                  ),
+                  onMapCreated: (_) {},
+                  onCameraMove: (position) {
+                    selectedPosition = position.target;
+                  },
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('selected_position'),
+                      position: initialMarkerPosition,
+                    ),
+                  },
+                ),
+                const Center(
+                  child: Icon(Icons.add, size: 30, color: Colors.red),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  latitude = selectedPosition.latitude;
+                  longitude = selectedPosition.longitude;
+                  weatherData = fetchWeatherData();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
