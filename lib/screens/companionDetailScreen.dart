@@ -67,8 +67,11 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       final startDate = (data['startDate'] as Timestamp).toDate();
       final now = DateTime.now();
 
-      bool shouldBeClosed = currentCount >= maxCount || now.isAfter(startDate);
-      bool shouldReopen = currentCount < maxCount && now.isBefore(startDate);
+      final today = DateTime(now.year, now.month, now.day);
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+
+      bool shouldBeClosed = currentCount >= maxCount || !today.isBefore(start); // now >= startDate
+      bool shouldReopen = currentCount < maxCount && today.isBefore(start);     // now < startDate
 
       if (shouldBeClosed && !(data['isClosed'] ?? false)) {
         await _firestore.collection('companions').doc(widget.companionId).update({'isClosed': true});
@@ -391,6 +394,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
 
             // ✅ 신청자 및 참여자 목록은 파티장일 경우에만
             if (_isLeader) _buildRequestsAndParticipants(),
+            if (_isParticipating || _isLeader) _buildParticipantsOnlySection(),
 
             const SizedBox(height: 24),
 
@@ -402,7 +406,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
     );
   }
 
-  Widget _buildCompanionInfo(String dateRange) {
+  Widget _buildParticipantsOnlySection() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -413,76 +417,156 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(_companionData!['title'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: (_companionData!['isClosed'] ?? false) ? Colors.grey[300] : Colors.green[100],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  (_companionData!['isClosed'] ?? false) ? '모집 완료' : '모집 중',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: (_companionData!['isClosed'] ?? false) ? Colors.grey[600] : Colors.green[800],
-                  ),
-                ),
-              ),
-              if (_isLeader || _isParticipating)
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      await Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => EditCompanionScreen(companionId: widget.companionId)),
-                      );
-                      _loadData();
-                    } else if (value == 'delete') {
-                      _deleteCompanion();
-                    } else if (value == 'leave') {
-                      _leaveCompanion();
-                    } else if (value == 'toggle_close') {
-                      final updated = !(_companionData!['isClosed'] ?? false);
-                      await _firestore.collection('companions').doc(widget.companionId).update({
-                        'isClosed': updated,
-                      });
-                      _loadData();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(updated ? '모집이 마감되었습니다.' : '모집이 재개되었습니다.')),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    if (_isLeader) const PopupMenuItem(value: 'edit', child: Text('수정')),
-                    if (_isLeader) const PopupMenuItem(value: 'delete', child: Text('삭제')),
-                    if (_isLeader)
-                      PopupMenuItem(
-                        value: 'toggle_close',
-                        child: Text(_companionData!['isClosed'] ? '모집 재개' : '모집 마감'),
-                      ),
-                    if (!_isLeader && _isParticipating)
-                      const PopupMenuItem(value: 'leave', child: Text('동행 참여 취소')),
-                  ],
-                ),
-            ],
-          ),
+          const Text('파티원 목록', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('📍 ${_companionData!['destination'] ?? '여행지 미정'}', style: const TextStyle(color: Colors.black87)),
-          const SizedBox(height: 4),
-          Text('🗓 $dateRange', style: const TextStyle(color: Colors.black54)),
-          const SizedBox(height: 12),
-          Text(_companionData!['content'] ?? '', style: const TextStyle(color: Colors.black87)),
-          const SizedBox(height: 12),
-          Text('파티장: ${_companionData!['leaderName'] ?? ''}', style: const TextStyle(color: Colors.grey)),
+          ..._participantList.map((user) => ListTile(
+            title: Text(user['userName']), // 닉네임만 표시
+            trailing: const Icon(Icons.info_outline),
+            onTap: () async {
+              final userDetail = await _firestore.collection('users').doc(user['userId']).get();
+              final detail = userDetail.data();
+              if (detail != null) {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('파티원 정보'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('ID: ${detail['id'] ?? '없음'}'),
+                        Text('성별: ${detail['gender'] ?? '모름'}'),
+                        Text('나이: ${detail['age']?.toString() ?? '모름'}'),
+                        Text('연락처: ${detail['contact'] ?? '미공개'}'),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('닫기'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          )),
         ],
       ),
     );
   }
+
+
+  Widget _buildCompanionInfo(String dateRange) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('companions').doc(widget.companionId).snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final currentCount = data['currentCount'] ?? 0;
+        final maxCount = data['maxCount'] ?? 0;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(data['title'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: (data['isClosed'] ?? false) ? Colors.grey[300] : Colors.green[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      (data['isClosed'] ?? false) ? '모집 완료' : '모집 중',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: (data['isClosed'] ?? false) ? Colors.grey[600] : Colors.green[800],
+                      ),
+                    ),
+                  ),
+
+                  if (_isLeader || _isParticipating)
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          await Navigator.push(context,
+                            MaterialPageRoute(builder: (_) => EditCompanionScreen(companionId: widget.companionId)),
+                          );
+                          _loadData();
+                        } else if (value == 'delete') {
+                          _deleteCompanion();
+                        } else if (value == 'leave') {
+                          _leaveCompanion();
+                        } else if (value == 'toggle_close') {
+                          final updated = !(_companionData!['isClosed'] ?? false);
+                          await _firestore.collection('companions').doc(widget.companionId).update({
+                            'isClosed': updated,
+                          });
+                          _loadData();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(updated ? '모집이 마감되었습니다.' : '모집이 재개되었습니다.')),
+                          );
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        if (_isLeader) const PopupMenuItem(value: 'edit', child: Text('수정')),
+                        if (_isLeader) const PopupMenuItem(value: 'delete', child: Text('삭제')),
+                        if (_isLeader)
+                          PopupMenuItem(
+                            value: 'toggle_close',
+                            child: Text(_companionData!['isClosed'] ? '모집 재개' : '모집 마감'),
+                          ),
+                        if (!_isLeader && _isParticipating)
+                          const PopupMenuItem(value: 'leave', child: Text('동행 참여 취소')),
+                      ],
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+              Text('📍 ${data['destination'] ?? '여행지 미정'}', style: const TextStyle(color: Colors.black87)),
+
+              const SizedBox(height: 12),
+              Text(data['content'] ?? '', style: const TextStyle(color: Colors.black87)),
+
+              const SizedBox(height: 4),
+              Text('🗓 $dateRange', style: const TextStyle(color: Colors.black54)),
+              const SizedBox(height: 8),
+              Text('👥 $currentCount / $maxCount', style: const TextStyle(color: Colors.black54)),
+
+              // 모집 조건 표시
+              const SizedBox(height: 8),
+              Text('✅ 참여 조건: '
+                  '${data['genderCondition'] ?? '무관'} / '
+                  '${data['ageCondition'] is List ? '${data['ageCondition'][0]}세~${data['ageCondition'][1]}세' : '연령 무관'}',
+                style: const TextStyle(color: Colors.black87),
+              ),
+
+              const SizedBox(height: 12),
+              Text('파티장: ${data['leaderName'] ?? ''}', style: const TextStyle(color: Colors.grey)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Future<void> _deleteCompanion() async {
     final confirm = await showDialog<bool>(
@@ -695,8 +779,33 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
               const Text('참여자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               ..._participantList.map((user) => ListTile(
-                title: Text(user['userName']),
-                subtitle: Text('ID: ${user['userId']}'),
+                title: Text(user['userName']), // 닉네임만 표시
+                onTap: () async {
+                  final userDoc = await _firestore.collection('users').doc(user['userId']).get();
+                  final userInfo = userDoc.data();
+
+                  if (userInfo == null) return;
+
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('참여자 정보'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ID: ${userInfo['id']}'),
+                          Text('성별: ${userInfo['gender'] ?? '미입력'}'),
+                          Text('나이: ${userInfo['age'] ?? '미입력'}세'),
+                          Text('연락처: ${userInfo['contact'] ?? '미입력'}'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
+                      ],
+                    ),
+                  );
+                },
                 trailing: _isLeader && !user['isLeader']
                     ? IconButton(
                   icon: const Icon(Icons.person_remove, color: Colors.red),
