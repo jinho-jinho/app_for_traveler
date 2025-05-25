@@ -393,7 +393,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
             const SizedBox(height: 24),
 
             // ✅ 신청자 및 참여자 목록은 파티장일 경우에만
-            if (_isLeader) _buildRequestsAndParticipants(),
+            // if (_isLeader) _buildRequestsAndParticipants(),
             if (_isParticipating || _isLeader) _buildParticipantsOnlySection(),
 
             const SizedBox(height: 24),
@@ -420,7 +420,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
           const Text('파티원 목록', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ..._participantList.map((user) => ListTile(
-            title: Text(user['userName']), // 닉네임만 표시
+            title: Text('👤  ${user['userName']}'), // 닉네임만 표시
             trailing: const Icon(Icons.info_outline),
             onTap: () async {
               final userDetail = await _firestore.collection('users').doc(user['userId']).get();
@@ -429,7 +429,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('파티원 정보'),
+                    title: const Text('참여자 정보'),
                     content: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,96 +727,96 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
     );
   }
 
-  Widget _buildRequestsAndParticipants() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
-              ..._requests.map((user) => ListTile(
-                title: Text(user['userName'] ?? '알 수 없음'),
-                subtitle: Text('ID: ${user['id']}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.check, color: Colors.green),
-                      onPressed: () => _acceptRequest(user['id'], user['userName']),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.red),
-                      onPressed: () => _rejectRequest(user['id']),
-                    ),
-                  ],
-                ),
-              )),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('참여자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ..._participantList.map((user) => ListTile(
-                title: Text(user['userName']), // 닉네임만 표시
-                onTap: () async {
-                  final userDoc = await _firestore.collection('users').doc(user['userId']).get();
-                  final userInfo = userDoc.data();
-
-                  if (userInfo == null) return;
-
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('참여자 정보'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('ID: ${userInfo['id']}'),
-                          Text('성별: ${userInfo['gender'] ?? '미입력'}'),
-                          Text('나이: ${userInfo['age'] ?? '미입력'}세'),
-                          Text('연락처: ${userInfo['contact'] ?? '미입력'}'),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
-                      ],
-                    ),
-                  );
-                },
-                trailing: _isLeader && !user['isLeader']
-                    ? IconButton(
-                  icon: const Icon(Icons.person_remove, color: Colors.red),
-                  onPressed: () => _kickParticipant(user['userId']),
-                )
-                    : null,
-              )),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildRequestsAndParticipants() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       const SizedBox(height: 24),
+  //       Container(
+  //         padding: const EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: Colors.white,
+  //           borderRadius: BorderRadius.circular(12),
+  //           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+  //         ),
+  //         child: Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+  //             const SizedBox(height: 8),
+  //             if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
+  //             ..._requests.map((user) => ListTile(
+  //               title: Text(user['userName'] ?? '알 수 없음'),
+  //               subtitle: Text('ID: ${user['id']}'),
+  //               trailing: Row(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   IconButton(
+  //                     icon: const Icon(Icons.check, color: Colors.green),
+  //                     onPressed: () => _acceptRequest(user['id'], user['userName']),
+  //                   ),
+  //                   IconButton(
+  //                     icon: const Icon(Icons.clear, color: Colors.red),
+  //                     onPressed: () => _rejectRequest(user['id']),
+  //                   ),
+  //                 ],
+  //               ),
+  //             )),
+  //           ],
+  //         ),
+  //       ),
+  //       const SizedBox(height: 24),
+  //       Container(
+  //         padding: const EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: Colors.white,
+  //           borderRadius: BorderRadius.circular(12),
+  //           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+  //         ),
+  //         child: Column(
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             const Text('참여자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+  //             const SizedBox(height: 8),
+  //             ..._participantList.map((user) => ListTile(
+  //               title: Text(user['userName']), // 닉네임만 표시
+  //               onTap: () async {
+  //                 final userDoc = await _firestore.collection('users').doc(user['userId']).get();
+  //                 final userInfo = userDoc.data();
+  //
+  //                 if (userInfo == null) return;
+  //
+  //                 showDialog(
+  //                   context: context,
+  //                   builder: (_) => AlertDialog(
+  //                     title: const Text('참여자 정보'),
+  //                     content: Column(
+  //                       mainAxisSize: MainAxisSize.min,
+  //                       crossAxisAlignment: CrossAxisAlignment.start,
+  //                       children: [
+  //                         Text('ID: ${userInfo['id']}'),
+  //                         Text('성별: ${userInfo['gender'] ?? '미입력'}'),
+  //                         Text('나이: ${userInfo['age'] ?? '미입력'}세'),
+  //                         Text('연락처: ${userInfo['contact'] ?? '미입력'}'),
+  //                       ],
+  //                     ),
+  //                     actions: [
+  //                       TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
+  //                     ],
+  //                   ),
+  //                 );
+  //               },
+  //               trailing: _isLeader && !user['isLeader']
+  //                   ? IconButton(
+  //                 icon: const Icon(Icons.person_remove, color: Colors.red),
+  //                 onPressed: () => _kickParticipant(user['userId']),
+  //               )
+  //                   : null,
+  //             )),
+  //           ],
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 }

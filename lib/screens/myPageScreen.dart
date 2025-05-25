@@ -1,9 +1,10 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_for_traveler/screens/loginScreen.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
+
+import 'myScheduleScreen.dart';
 
 class MyPageScreen extends StatefulWidget {
   final String currentUserId;
@@ -22,8 +23,12 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  final TextEditingController _nicknameController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _nicknameController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController(); // (세연)
+  final TextEditingController _contactController = TextEditingController(); // (세연)
+  String _selectedGender = '여성'; // (세연)
+
   String? _nickname;
   List<String> _favorites = [];
   List<DocumentSnapshot> _myPosts = [];
@@ -46,12 +51,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _loadUserData() async {
-    DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-    if (userDoc.exists) {
+    final doc = await _firestore.collection('users').doc(widget.currentUserId).get();
+    if (doc.exists) {
+      final data = doc.data()!;
       setState(() {
-        _nickname = userDoc['nickname'] ?? widget.currentUserId;
+        _nickname = data['nickname'] ?? widget.currentUserId;
         _nicknameController.text = _nickname!;
-        _favorites = List<String>.from(userDoc['favorites'] ?? []);
+        _selectedGender = data['gender'] ?? '여성'; // (세연)
+        _ageController.text = data['age']?.toString() ?? ''; // (세연)
+        _contactController.text = data['contact'] ?? ''; // (세연)
+        _favorites = List<String>.from(data['favorites'] ?? []);
       });
     }
   }
@@ -71,9 +80,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         .collection('posts')
         .where('authorId', isEqualTo: widget.currentUserId)
         .get();
-    setState(() {
-      _myPosts = snapshot.docs;
-    });
+    setState(() => _myPosts = snapshot.docs);
   }
 
   Future<void> _loadMyCommentedPosts() async {
@@ -95,9 +102,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       allPosts.addAll(postSnapshot.docs);
     }
 
-    setState(() {
-      _myComments = allPosts;
-    });
+    setState(() => _myComments = allPosts);
   }
 
   void _showSimpleList(String title, List<DocumentSnapshot> docs) {
@@ -163,6 +168,74 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
+  void _showEditProfileDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('내 정보 수정'), // (세연)
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(controller: _nicknameController, decoration: const InputDecoration(labelText: '닉네임')), // (세연)
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: const InputDecoration(labelText: '성별'), // (세연)
+                items: ['여성', '남성'].map((value) {
+                  return DropdownMenuItem(value: value, child: Text(value));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedGender = val);
+                },
+              ),
+              TextField(controller: _ageController, decoration: const InputDecoration(labelText: '나이'), keyboardType: TextInputType.number), // (세연)
+              TextField(controller: _contactController, decoration: const InputDecoration(labelText: '연락처')), // (세연)
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          ElevatedButton(
+            onPressed: () async {
+              await _firestore.collection('users').doc(widget.currentUserId).update({
+                'nickname': _nicknameController.text.trim(),
+                'gender': _selectedGender, // (세연)
+                'age': int.tryParse(_ageController.text.trim()) ?? 0, // (세연)
+                'contact': _contactController.text.trim(), // (세연)
+              });
+              _loadUserData();
+              Navigator.pop(context);
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async { // (세연)
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('회원 탈퇴'),
+        content: const Text('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('탈퇴')),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _firestore.collection('users').doc(widget.currentUserId).delete();
+      widget.onLogout(null);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,49 +244,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           ListTile(
-            title: const Text('여행 스케줄'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // TODO: 여행 스케줄 화면으로 이동
-            },
-          ),
-          ListTile(
-            title: const Text('닉네임 설정'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('닉네임 설정'),
-                  content: TextField(
-                    controller: _nicknameController,
-                    decoration: const InputDecoration(hintText: '닉네임 입력'),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('취소'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await _firestore.collection('users').doc(widget.currentUserId).update({
-                          'nickname': _nicknameController.text.trim(),
-                        });
-                        setState(() => _nickname = _nicknameController.text.trim());
-                        Navigator.pop(context);
-                      },
-                      child: const Text('저장'),
-                    ),
-                  ],
-                ),
-              );
-            },
+            title: const Text('내 정보 수정'), // (세연)
+            trailing: const Icon(Icons.edit),
+            onTap: _showEditProfileDialog,
           ),
           ListTile(
             title: const Text('즐겨찾기 한 장소'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _showFavorites,
           ),
+          ListTile(
+            title: const Text('여행 스케줄'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MyScheduleScreen(currentUserId: widget.currentUserId),
+                ),
+              );
+            },
+          ),
+
           ListTile(
             title: const Text('내가 쓴 글 조회'),
             trailing: const Icon(Icons.chevron_right),
@@ -226,15 +278,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
           const SizedBox(height: 32),
           Center(
-            child: TextButton(
-              onPressed: () async {
-                widget.onLogout(null);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
-                );
-              },
-              child: const Text('로그아웃'),
+            child: Column(
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    widget.onLogout(null);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
+                    );
+                  },
+                  child: const Text('로그아웃'),
+                ),
+                TextButton(
+                  onPressed: _deleteAccount,
+                  child: const Text('회원 탈퇴', style: TextStyle(color: Colors.red)), // (세연)
+                ),
+              ],
             ),
           ),
         ],
