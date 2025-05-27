@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:app_for_traveler/models/place.dart';
 import 'package:app_for_traveler/services/kakao_api_service.dart';
+import 'package:app_for_traveler/services/public_wifi_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io'; // File 클래스용
+import 'package:image_picker/image_picker.dart'; // 이미지 피커 관련
+import 'package:firebase_storage/firebase_storage.dart';
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -38,6 +42,7 @@ class _MapScreenState extends State<MapScreen> {
   List<Place> _restrooms = [];
   List<Place> _chargingStations = [];
   List<Place> _publicWifis = [];
+  List<Place> _touristAttractions = []; // 관광 명소 리스트 추가
   bool _isLoading = true; // 로딩 상태
   LatLng? _currentPosition; // 현재 위치
   bool _locationPermissionGranted = false; // 위치 권한 상태
@@ -49,25 +54,20 @@ class _MapScreenState extends State<MapScreen> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // 독립 카테고리로 변경 (관광 명소 카테고리 추가)
   final Map<String, bool> _categoryEnabled = {
-    '응급 & 안전': true,
-    '금융 & 환전': true,
-    '편의시설': true,
+    '병원': true,
+    '약국': true,
+    '경찰서': true,
+    'ATM': true,
+    '은행': true,
+    '환전소': true,
+    '공중 화장실': true,
+    '물품 보관함': true,
+    '휴대폰 충전소': true,
     '공공 와이파이': true,
+    '관광 명소': true, // 관광 명소 카테고리 추가
   };
-
-  final List<Map<String, String>> _placeCategories = [
-    {'category': '응급 & 안전', 'subcategory': '병원 위치'},
-    {'category': '응급 & 안전', 'subcategory': '약국 위치'},
-    {'category': '응급 & 안전', 'subcategory': '경찰서/파출소'},
-    {'category': '금융 & 환전', 'subcategory': 'ATM기 위치'},
-    {'category': '금융 & 환전', 'subcategory': '은행 위치'},
-    {'category': '금융 & 환전', 'subcategory': '환전소 위치'},
-    {'category': '편의시설', 'subcategory': '공중 화장실'},
-    {'category': '편의시설', 'subcategory': '물품 보관함'},
-    {'category': '편의시설', 'subcategory': '휴대폰 충전 가능 장소'},
-    {'category': '공공 와이파이', 'subcategory': '공공 와이파이'},
-  ];
 
   BitmapDescriptor? hospitalIcon;
   BitmapDescriptor? pharmacyIcon;
@@ -80,6 +80,8 @@ class _MapScreenState extends State<MapScreen> {
   BitmapDescriptor? lockerPaidIcon;
   BitmapDescriptor? chargingStationIcon;
   BitmapDescriptor? publicWifiIcon;
+  BitmapDescriptor? touristAttractionIcon; // 관광 명소 아이콘 추가
+  BitmapDescriptor? currentLocationIcon; // 현재 위치 마커 아이콘
 
   static const LatLng initialPosition = LatLng(37.5665, 126.9780);
 
@@ -126,39 +128,80 @@ class _MapScreenState extends State<MapScreen> {
     bool serviceEnabled;
     LocationPermission permission;
 
+    // 위치 서비스 활성화 여부 확인
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       _currentPosition = initialPosition;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('위치 서비스가 비활성화되어 있습니다. 위치 서비스를 활성화해주세요.')),
+        );
+      }
+      print('위치 서비스 비활성화됨');
       return;
     }
 
+    // 위치 권한 확인 및 요청
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         _currentPosition = initialPosition;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('위치 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.')),
+          );
+        }
+        print('위치 권한 거부됨');
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
       _currentPosition = initialPosition;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('위치 권한이 영구적으로 거부되었습니다. 설정에서 권한을 허용해주세요.')),
+        );
+      }
+      print('위치 권한 영구 거부됨');
       return;
     }
 
+    // 현재 위치 가져오기
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.bestForNavigation, // 더 높은 정확도 설정
+        timeLimit: const Duration(seconds: 10), // 10초 타임아웃 설정
+        forceAndroidLocationManager: true, // 안드로이드에서 위치 관리자 강제 사용
       );
       if (mounted) {
         setState(() {
           _currentPosition = LatLng(position.latitude, position.longitude);
           _locationPermissionGranted = true;
+          // 디버깅 로그 추가
+          print('현재 위치: ${position.latitude}, ${position.longitude}');
+          print('위치 제공자: ${position.isMocked ? "가짜 위치 (Mock)" : "실제 위치"}');
         });
       }
     } catch (e) {
       _currentPosition = initialPosition;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('위치 정보를 가져오는 데 실패했습니다: $e')),
+        );
+        print('위치 가져오기 실패: $e');
+      }
     }
+  }
+
+  // 위치 새로고침 메서드 추가
+  Future<void> _refreshLocation() async {
+    await _checkLocationPermission();
+    if (_currentPosition != null && mapController != null) {
+      mapController!.animateCamera(CameraUpdate.newLatLng(_currentPosition!));
+    }
+    setState(() {}); // 마커 업데이트를 위해 새로고침
   }
 
   // _fetchCurrentUserNickname: Firestore에서 사용자 닉네임 가져오기
@@ -190,7 +233,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // _setupMarkerIcons: 각 카테고리별 마커 아이콘 설정
-  // 역할: 지도 마커 아이콘 초기화
+  // 역할: 지도 마커 아이콘 초기화 (관광 명소 아이콘 추가)
   // 분류: 로직
   Future<void> _setupMarkerIcons() async {
     hospitalIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
@@ -204,6 +247,8 @@ class _MapScreenState extends State<MapScreen> {
     lockerPaidIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan);
     chargingStationIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueMagenta);
     publicWifiIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRose);
+    touristAttractionIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow); // 관광 명소 아이콘 추가
+    currentLocationIcon = await BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
   }
 
   // _isKakaoDataSynced: Kakao 데이터 동기화 여부 확인
@@ -236,6 +281,7 @@ class _MapScreenState extends State<MapScreen> {
       bool isSynced = await _isKakaoDataSynced();
       if (!isSynced) {
         final kakaoApiService = KakaoApiService();
+        final publicWifiService = PublicWifiService(); // 공공 와이파이 서비스 추가
 
         if (mounted) setState(() => _syncProgressMessage = "병원 위치 동기화 중...");
         final hospitals = await kakaoApiService.fetchHospitals();
@@ -269,21 +315,35 @@ class _MapScreenState extends State<MapScreen> {
         final lockers = await kakaoApiService.fetchLockers();
         await _syncKakaoDataToFirestore(lockers);
 
+        // 공공 와이파이 데이터를 공공 데이터 포털에서 가져오기
+        if (mounted) setState(() => _syncProgressMessage = "공공 와이파이 동기화 중...");
+        final publicWifis = await publicWifiService.fetchPublicWifis();
+        await _syncKakaoDataToFirestore(publicWifis);
+
+        // 관광 명소 데이터를 카카오맵 API에서 가져오기
+        if (mounted) setState(() => _syncProgressMessage = "관광 명소 동기화 중...");
+        final touristAttractions = await kakaoApiService.fetchTouristAttractions();
+        await _syncKakaoDataToFirestore(touristAttractions);
+
         await _setKakaoDataSynced();
       }
 
+      // imageUri 추가
       final userPlacesSnapshot = await _firestore.collection('places').get();
 
       final userPlaces = userPlacesSnapshot.docs.map((doc) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
+
         List<Review> reviews = [];
         if (data['reviews'] != null) {
-          reviews = (data['reviews'] as List).map((reviewData) {
+          reviews = (data['reviews'] as List).map((raw) {
+            final reviewData = raw as Map<String, dynamic>;
             return Review(
               userId: reviewData['userId'] as String,
-              rating: reviewData['rating']?.toDouble() ?? 0.0,
+              rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
               comment: reviewData['comment'] as String,
-              likes: reviewData['likes']?.toInt() ?? 0,
+              likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
+              imageUri: reviewData['imageUri'] as String?,  // ← 여기서 읽어오기
             );
           }).toList();
         }
@@ -318,6 +378,7 @@ class _MapScreenState extends State<MapScreen> {
           _restrooms = userPlaces.where((place) => place.subcategory == '공중 화장실').toList();
           _chargingStations = userPlaces.where((place) => place.subcategory == '휴대폰 충전 가능 장소').toList();
           _publicWifis = userPlaces.where((place) => place.subcategory == '공공 와이파이').toList();
+          _touristAttractions = userPlaces.where((place) => place.subcategory == '관광 명소').toList(); // 관광 명소 데이터 추가
 
           _isLoading = false;
         });
@@ -476,6 +537,7 @@ class _MapScreenState extends State<MapScreen> {
       ..._restrooms,
       ..._chargingStations,
       ..._publicWifis,
+      ..._touristAttractions, // 관광 명소 추가
     ]) {
       if (place.id == placeId) {
         selectedPlace = place;
@@ -491,6 +553,41 @@ class _MapScreenState extends State<MapScreen> {
       _lastProcessedPlaceId = placeId;
     }
   }
+
+  // 이미지 -> 파이어베이스 연동
+  Future<String?> uploadImageToFirebase(File imageFile) async {
+    try {
+      final fileName = 'review_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(imageFile);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      print('이미지 업로드 실패: $e');
+      return null;
+    }
+  }
+
+  // 이미지 전체 보기 다이얼로그
+  void _showImagePreview(String imagePath) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: EdgeInsets.zero,       // 화면 가득
+        child: SizedBox.expand(
+          child: InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Image.file(
+              File(imagePath),
+              fit: BoxFit.contain,            // 꽉 차게
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   // _showPlaceDetailsBottomSheet: 장소 세부 정보 바텀시트 표시
   // 역할: 장소 정보, 리뷰, 찜 버튼 UI 표시
@@ -522,6 +619,7 @@ class _MapScreenState extends State<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ────────────────────────── 헤더 (이름 + 찜 버튼)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -542,6 +640,7 @@ class _MapScreenState extends State<MapScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 평균 별점
                         Text('평균 별점: ${averageRating.toStringAsFixed(1)}'),
                         RatingBarIndicator(
                           rating: averageRating,
@@ -554,31 +653,114 @@ class _MapScreenState extends State<MapScreen> {
                           direction: Axis.horizontal,
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 리뷰 목록
                         const Text('코멘트:', style: TextStyle(fontWeight: FontWeight.bold)),
                         Expanded(
                           child: place.reviews.isEmpty
                               ? const Center(child: Text('코멘트가 없습니다.'))
                               : ListView.builder(
-                                  itemCount: place.reviews.length,
-                                  itemBuilder: (context, index) {
-                                    final review = place.reviews[index];
-                                    return ListTile(
-                                      title: Text('별점: ${review.rating.toString()}'),
-                                      subtitle: Text(review.comment),
-                                      trailing: FutureBuilder<String>(
-                                        future: _getNickname(review.userId),
-                                        builder: (context, snapshot) {
-                                          if (snapshot.connectionState == ConnectionState.waiting) {
-                                            return const Text('로딩 중...');
-                                          }
-                                          return Text('작성자: ${snapshot.data ?? review.userId}');
-                                        },
-                                      ),
+                            itemCount: place.reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = place.reviews[index];
+                              return ListTile(
+                                // 별점과 코멘트 + 이미지 표시
+                                title: Text('별점: ${review.rating}'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(review.comment),
+                                    if (review.imageUri != null) ... [
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () => _showImagePreview(review.imageUri!),
+                                        child: ClipRRect (
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.file(
+                                            File(review.imageUri!),
+                                            height: 100,
+                                            width: 100,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    ]
+                                    /*Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Image.file(
+                                          File(review.imageUri!),
+                                          height: 100,
+                                          width: 100,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),*/
+                                  ],
+                                ),
+                                // 작성자 + (본인 글이면) 삭제 버튼
+                                trailing: FutureBuilder<String>(
+                                  future: _getNickname(review.userId),
+                                  builder: (context, nickSnap) {
+                                    if (nickSnap.connectionState == ConnectionState.waiting) {
+                                      return const Text('로딩 중...');
+                                    }
+                                    final nickname = nickSnap.data ?? review.userId;
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('작성자: $nickname'),
+                                        const SizedBox(width: 8),
+                                        if (widget.currentUserId == review.userId)
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                            onPressed: () async {
+                                              // 삭제 확인 다이얼로그
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('리뷰 삭제'),
+                                                  content: const Text('이 리뷰를 삭제하시겠습니까?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: const Text('취소'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      child: const Text('삭제'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+
+                                              if (confirm == true) {
+                                                // 로컬 리스트에서 제거
+                                                place.reviews.removeAt(index);
+                                                // Firestore 업데이트
+                                                await _firestore
+                                                    .collection('places')
+                                                    .doc(place.id)
+                                                    .update({
+                                                  'reviews': place.reviews.map((r) => {
+                                                    'userId': r.userId,
+                                                    'rating': r.rating,
+                                                    'comment': r.comment,
+                                                    'likes': r.likes,
+                                                    'imageUri': r.imageUri?.toString(),
+                                                  }).toList(),
+                                                });
+                                                setState(() {}); // UI 갱신
+                                              }
+                                            },
+                                          ),
+                                      ],
                                     );
                                   },
                                 ),
+                              );
+                            },
+                          ),
                         ),
                         const SizedBox(height: 8),
+                        // ────────────────────────── 코멘트 추가 버튼
                         Center(
                           child: ElevatedButton(
                             onPressed: () {
@@ -629,6 +811,10 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
+    // ImagePicker 인스턴스와 선택된 파일 참조
+    final ImagePicker _picker = ImagePicker();
+    XFile? pickedImage;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -640,6 +826,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // 별점 입력
                     RatingBar.builder(
                       initialRating: newRating,
                       minRating: 1,
@@ -656,6 +843,7 @@ class _MapScreenState extends State<MapScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
+                    // 코멘트 입력
                     TextField(
                       controller: commentController,
                       decoration: const InputDecoration(
@@ -664,6 +852,47 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       maxLines: 3,
                     ),
+                    const SizedBox(height: 10),
+
+                    // 사진 첨부 버튼
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.photo),
+                      label: const Text('사진 첨부'),
+                      onPressed: () async {
+                        final XFile? image = await _picker.pickImage(
+                          source: ImageSource.gallery,
+                          maxWidth: 800,
+                          imageQuality: 80,
+                        );
+                        if (image != null) {
+                          setState(() => pickedImage = image);
+                        }
+                      },
+                    ),
+
+                    // 첨부 사진 미리보기
+                    if (pickedImage != null) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          // 다이얼로그로 전체 보기
+                          showDialog(
+                            context: context,
+                            builder: (_) => Dialog(
+                              child: InteractiveViewer(
+                                child: Image.file(File(pickedImage!.path)),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Image.file(
+                          File(pickedImage!.path),
+                          height: 100,
+                          width: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -684,6 +913,7 @@ class _MapScreenState extends State<MapScreen> {
                         rating: newRating,
                         comment: commentController.text,
                         likes: 0,
+                        imageUri: pickedImage?.path, // imageUri 추가
                       );
 
                       DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get();
@@ -695,6 +925,7 @@ class _MapScreenState extends State<MapScreen> {
                             rating: reviewData['rating']?.toDouble() ?? 0.0,
                             comment: reviewData['comment'] as String,
                             likes: reviewData['likes']?.toInt() ?? 0,
+                            imageUri: reviewData['imageUri'], // imageUri 추가
                           );
                         }).toList();
                       }
@@ -703,11 +934,12 @@ class _MapScreenState extends State<MapScreen> {
 
                       await _firestore.collection('places').doc(place.id).update({
                         'reviews': reviews.map((r) => {
-                              'userId': r.userId,
-                              'rating': r.rating,
-                              'comment': r.comment,
-                              'likes': r.likes,
-                            }).toList(),
+                          'userId': r.userId,
+                          'rating': r.rating,
+                          'comment': r.comment,
+                          'likes': r.likes,
+                          'imageUri': r.imageUri, // imageUri 추가
+                        }).toList(),
                       });
 
                       await _fetchData();
@@ -728,11 +960,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // _showAddPlaceDialog: 새 장소 추가 카테고리 선택 다이얼로그
-  // 역할: 카테고리 및 하위 카테고리 선택 UI 제공
+  // 역할: 카테고리 선택 UI 제공 (상위/하위 구분 제거)
   // 분류: 디자인
   void _showAddPlaceDialog() {
     String? selectedCategory;
-    String? selectedSubcategory;
 
     showDialog(
       context: context,
@@ -757,38 +988,19 @@ class _MapScreenState extends State<MapScreen> {
                       onChanged: (value) {
                         setState(() {
                           selectedCategory = value;
-                          selectedSubcategory = null;
                         });
                       },
                     ),
-                    if (selectedCategory != null)
-                      DropdownButton<String>(
-                        hint: const Text('하위 카테고리 선택'),
-                        value: selectedSubcategory,
-                        items: _placeCategories
-                            .where((item) => item['category'] == selectedCategory)
-                            .map((item) {
-                          return DropdownMenuItem<String>(
-                            value: item['subcategory'],
-                            child: Text(item['subcategory']!),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedSubcategory = value;
-                          });
-                        },
-                      ),
                     const SizedBox(height: 10),
                     ElevatedButton(
-                      onPressed: selectedSubcategory != null
+                      onPressed: selectedCategory != null
                           ? () {
-                              Navigator.pop(context);
-                              _showLocationPickerDialog(
-                                selectedCategory!,
-                                selectedSubcategory!,
-                              );
-                            }
+                        Navigator.pop(context);
+                        _showLocationPickerDialog(
+                          selectedCategory!,
+                          selectedCategory!,
+                        );
+                      }
                           : null,
                       child: const Text('위치 선택'),
                     ),
@@ -809,9 +1021,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // _showLocationPickerDialog: 장소 위치 선택 다이얼로그
-  // 역할: 지도에서 위치 선택 UI 제공
+  // 역할: 지도에서 위치 선택 UI 제공 (현재 위치에서 시작)
   // 분류: 디자인
   void _showLocationPickerDialog(String category, String subcategory) {
+    // 현재 위치가 없으면 initialPosition 사용
     LatLng initialMarkerPosition = _currentPosition ?? initialPosition;
     LatLng selectedPosition = initialMarkerPosition;
 
@@ -827,7 +1040,7 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 GoogleMap(
                   initialCameraPosition: CameraPosition(
-                    target: selectedPosition,
+                    target: initialMarkerPosition, // 현재 위치에서 시작
                     zoom: 15,
                   ),
                   onMapCreated: (controller) {},
@@ -948,22 +1161,22 @@ class _MapScreenState extends State<MapScreen> {
 
                         setState(() {
                           switch (subcategory) {
-                            case '병원 위치':
+                            case '병원':
                               _hospitals.add(newPlace);
                               break;
-                            case '약국 위치':
+                            case '약국':
                               _pharmacies.add(newPlace);
                               break;
-                            case '경찰서/파출소':
+                            case '경찰서':
                               _policeStations.add(newPlace);
                               break;
-                            case 'ATM기 위치':
+                            case 'ATM':
                               _atms.add(newPlace);
                               break;
-                            case '은행 위치':
+                            case '은행':
                               _banks.add(newPlace);
                               break;
-                            case '환전소 위치':
+                            case '환전소':
                               _currencyExchanges.add(newPlace);
                               break;
                             case '공중 화장실':
@@ -973,11 +1186,14 @@ class _MapScreenState extends State<MapScreen> {
                             case '물품 보관함':
                               _lockers.add(newPlace);
                               break;
-                            case '휴대폰 충전 가능 장소':
+                            case '휴대폰 충전소':
                               _chargingStations.add(newPlace);
                               break;
                             case '공공 와이파이':
                               _publicWifis.add(newPlace);
+                              break;
+                            case '관광 명소':
+                              _touristAttractions.add(newPlace);
                               break;
                           }
                         });
@@ -999,30 +1215,47 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   // _createMarkers: 지도에 표시할 마커 생성
-  // 역할: 카테고리별 장소 마커 생성
+  // 역할: 카테고리별 장소 마커 생성 (관광 명소 추가)
   // 분류: 로직
   Set<Marker> _createMarkers() {
     final List<Place> allPlaces = [];
-    if (_categoryEnabled['응급 & 안전'] == true) {
+
+    if (_categoryEnabled['병원'] == true) {
       allPlaces.addAll(_hospitals);
+    }
+    if (_categoryEnabled['약국'] == true) {
       allPlaces.addAll(_pharmacies);
+    }
+    if (_categoryEnabled['경찰서'] == true) {
       allPlaces.addAll(_policeStations);
     }
-    if (_categoryEnabled['금융 & 환전'] == true) {
+    if (_categoryEnabled['ATM'] == true) {
       allPlaces.addAll(_atms);
+    }
+    if (_categoryEnabled['은행'] == true) {
       allPlaces.addAll(_banks);
+    }
+    if (_categoryEnabled['환전소'] == true) {
       allPlaces.addAll(_currencyExchanges);
     }
-    if (_categoryEnabled['편의시설'] == true) {
+    if (_categoryEnabled['공중 화장실'] == true) {
       allPlaces.addAll(_publicToilets);
-      allPlaces.addAll(_lockers);
       allPlaces.addAll(_restrooms);
+    }
+    if (_categoryEnabled['물품 보관함'] == true) {
+      allPlaces.addAll(_lockers);
+    }
+    if (_categoryEnabled['휴대폰 충전소'] == true) {
       allPlaces.addAll(_chargingStations);
     }
     if (_categoryEnabled['공공 와이파이'] == true) {
       allPlaces.addAll(_publicWifis);
     }
-    final markers = allPlaces.map((place) {
+    if (_categoryEnabled['관광 명소'] == true) {
+      allPlaces.addAll(_touristAttractions); // 관광 명소 추가
+    }
+
+    final Set<Marker> markers = allPlaces.map((place) {
       BitmapDescriptor icon;
       switch (place.subcategory) {
         case '병원 위치':
@@ -1057,6 +1290,9 @@ class _MapScreenState extends State<MapScreen> {
         case '공공 와이파이':
           icon = publicWifiIcon ?? BitmapDescriptor.defaultMarker;
           break;
+        case '관광 명소':
+          icon = touristAttractionIcon ?? BitmapDescriptor.defaultMarker;
+          break;
         default:
           icon = BitmapDescriptor.defaultMarker;
       }
@@ -1070,6 +1306,19 @@ class _MapScreenState extends State<MapScreen> {
         },
       );
     }).toSet();
+
+    // 현재 위치 마커 추가
+    if (_currentPosition != null && _locationPermissionGranted) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('current_location'),
+          position: _currentPosition!,
+          icon: currentLocationIcon ?? BitmapDescriptor.defaultMarker,
+          infoWindow: const InfoWindow(title: '현재 위치'),
+        ),
+      );
+    }
+
     return markers;
   }
 
@@ -1086,15 +1335,15 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           _isMapVisible
               ? GoogleMap(
-                  onMapCreated: _onMapCreated,
-                  initialCameraPosition: const CameraPosition(
-                    target: initialPosition,
-                    zoom: 12,
-                  ),
-                  markers: _createMarkers(),
-                  myLocationEnabled: _locationPermissionGranted,
-                  myLocationButtonEnabled: true,
-                )
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: const CameraPosition(
+              target: initialPosition,
+              zoom: 12,
+            ),
+            markers: _createMarkers(),
+            myLocationEnabled: _locationPermissionGranted,
+            myLocationButtonEnabled: true,
+          )
               : const Center(child: Text('지도 로드 대기 중...')),
           Positioned(
             top: 10,
