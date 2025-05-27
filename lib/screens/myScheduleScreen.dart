@@ -4,6 +4,9 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'companionDetailScreen.dart';
 import 'createPersonalScheduleScreen.dart';
+import 'editPersonalScheduleScreen.dart';
+// 개인 일정 상세 조회 스크린 임포트 필요
+import 'personalScheduleDetailScreen.dart';
 
 class MyScheduleScreen extends StatefulWidget {
   final String currentUserId;
@@ -29,7 +32,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
   Future<void> _loadSchedules() async {
     final events = <DateTime, List<Map<String, dynamic>>>{};
 
-    // 🔹 1. 개인 일정 (startDate ~ endDate)
+    // 개인 일정 불러오기
     final personalSnap = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUserId)
@@ -41,18 +44,17 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
       final start = (data['startDate'] as Timestamp).toDate();
       final end = (data['endDate'] as Timestamp).toDate();
 
-      for (var d = start;
-      !d.isAfter(end);
-      d = d.add(const Duration(days: 1))) {
+      for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
         final key = DateTime(d.year, d.month, d.day);
         events.putIfAbsent(key, () => []).add({
           ...data,
           'isCompanion': false,
+          'scheduleDocId': doc.id,
         });
       }
     }
 
-    // 🔹 2. 참여한 동행 일정 (joinedCompanions 기준)
+    // 참여한 동행 일정 불러오기
     final joinedSnap = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUserId)
@@ -65,8 +67,8 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
       final end = (data['endDate'] as Timestamp).toDate();
       final companionId = data['companionId'];
 
-      // 🔸 companionId로 companions에서 title 가져오기
-      final companionDoc = await FirebaseFirestore.instance.collection('companions').doc(companionId).get();
+      final companionDoc =
+      await FirebaseFirestore.instance.collection('companions').doc(companionId).get();
       final companionData = companionDoc.data();
       final title = companionData?['title'] ?? '제목 없음';
 
@@ -75,13 +77,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         events.putIfAbsent(key, () => []).add({
           ...data,
           'isCompanion': true,
-          'title': title, // 🔸 여기서 title 저장
+          'title': title,
           'companionId': companionId,
         });
       }
     }
-
-
 
     setState(() {
       _events = events;
@@ -100,6 +100,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('나의 여행 스케줄'),
+        backgroundColor: Colors.grey[100],
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -107,11 +108,10 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      CreatePersonalScheduleScreen(userId: widget.currentUserId),
+                  builder: (_) => CreatePersonalScheduleScreen(userId: widget.currentUserId),
                 ),
               );
-              _loadSchedules(); // 새로고침
+              _loadSchedules();
             },
           )
         ],
@@ -139,8 +139,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                 ? const Center(child: Text('해당 날짜에 등록된 일정이 없습니다.'))
                 : ListView(
               children: () {
-                final sortedEvents =
-                List<Map<String, dynamic>>.from(todayEvents);
+                final sortedEvents = List<Map<String, dynamic>>.from(todayEvents);
                 sortedEvents.sort((a, b) {
                   final aDate = (a['startDate'] ?? a['date']) as Timestamp;
                   final bDate = (b['startDate'] ?? b['date']) as Timestamp;
@@ -149,10 +148,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                 return sortedEvents.map((event) {
                   final title = event['isCompanion'] ? '[동행] ${event['title']}' : event['title'];
                   final subtitle = event['destination'] ?? '';
+
                   return ListTile(
                     title: Text(title),
                     subtitle: Text(subtitle),
-                    onTap: () {
+                    onTap: () async {
                       if (event['isCompanion']) {
                         Navigator.push(
                           context,
@@ -163,8 +163,23 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                             ),
                           ),
                         );
+                      } else {
+                        // 개인 일정 클릭 시 조회 화면으로 이동
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PersonalScheduleDetailScreen(
+                              userId: widget.currentUserId,
+                              scheduleDocId: event['scheduleDocId'],
+                            ),
+                          ),
+                        );
+                        _loadSchedules();
                       }
                     },
+                    trailing: event['isCompanion']
+                        ? null
+                        : const SizedBox.shrink(), // 점 세개 메뉴 삭제
                   );
                 }).toList();
               }(),

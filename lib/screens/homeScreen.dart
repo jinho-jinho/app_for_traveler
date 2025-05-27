@@ -411,9 +411,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('여행 도우미'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('여행 도우미', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.grey[100], //세연
+        foregroundColor: Colors.black, //세연
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),

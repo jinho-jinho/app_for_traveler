@@ -180,7 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _contactController,
-                decoration: const InputDecoration(labelText: '연락수단 (카카오톡ID 또는 이메일)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: '연락처 (카카오톡ID 또는 이메일)', border: OutlineInputBorder()),
               ),
             ],
             const SizedBox(height: 16),

@@ -51,7 +51,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final doc = await _firestore.collection('users').doc(widget.currentUserId).get();
+    final doc = await _firestore
+        .collection('users')
+        .doc(widget.currentUserId)
+        .get();
     if (doc.exists) {
       final data = doc.data()!;
       setState(() {
@@ -66,7 +69,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _setupRealtimeListener() {
-    _userSubscription = _firestore.collection('users').doc(widget.currentUserId).snapshots().listen((snapshot) {
+    _userSubscription = _firestore
+        .collection('users')
+        .doc(widget.currentUserId)
+        .snapshots()
+        .listen((snapshot) {
       if (snapshot.exists) {
         setState(() {
           _favorites = List<String>.from(snapshot['favorites'] ?? []);
@@ -89,7 +96,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
         .where('authorId', isEqualTo: widget.currentUserId)
         .get();
 
-    final postIds = commentSnapshot.docs.map((doc) => doc['postId'] as String).toSet().toList();
+    final postIds = commentSnapshot.docs
+        .map((doc) => doc['postId'] as String)
+        .toSet()
+        .toList();
     if (postIds.isEmpty) return;
 
     List<DocumentSnapshot> allPosts = [];
@@ -109,34 +119,38 @@ class _MyPageScreenState extends State<MyPageScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              return ListTile(
-                title: Text(data['title'] ?? '제목 없음'),
-                subtitle: Text(data['content'] ?? ''),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PostDetailScreen(
-                      postId: docs[index].id,
-                      title: data['title'],
-                      content: data['content'],
-                      authorId: data['authorId'],
-                      authorNickname: data['authorNickname'],
-                      createdAt: (data['createdAt'] as Timestamp).toDate(),
-                      currentUserId: widget.currentUserId,
-                      currentUserNickname: _nickname,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        builder: (_) =>
+            Scaffold(
+              appBar: AppBar(title: Text(title)),
+              body: ListView.builder(
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  return ListTile(
+                    title: Text(data['title'] ?? '제목 없음'),
+                    subtitle: Text(data['content'] ?? ''),
+                    onTap: () =>
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                PostDetailScreen(
+                                  postId: docs[index].id,
+                                  title: data['title'],
+                                  content: data['content'],
+                                  authorId: data['authorId'],
+                                  authorNickname: data['authorNickname'],
+                                  createdAt: (data['createdAt'] as Timestamp)
+                                      .toDate(),
+                                  currentUserId: widget.currentUserId,
+                                  currentUserNickname: _nickname,
+                                ),
+                          ),
+                        ),
+                  );
+                },
+              ),
+            ),
       ),
     );
   }
@@ -145,25 +159,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('즐겨찾기한 장소')),
-          body: ListView(
-            children: _favorites.map((placeId) {
-              return FutureBuilder<DocumentSnapshot>(
-                future: _firestore.collection('places').doc(placeId).get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) return const ListTile(title: Text('로딩 중...'));
-                  if (!snapshot.hasData || !snapshot.data!.exists) return ListTile(title: Text(placeId));
-                  final data = snapshot.data!.data() as Map<String, dynamic>;
-                  return ListTile(
-                    title: Text(data['name'] ?? placeId),
-                    onTap: () => widget.onPlaceSelected(placeId),
+        builder: (_) =>
+            Scaffold(
+              appBar: AppBar(title: const Text('즐겨찾기한 장소')),
+              body: ListView(
+                children: _favorites.map((placeId) {
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: _firestore.collection('places').doc(placeId).get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        return const ListTile(title: Text('로딩 중...'));
+                      if (!snapshot.hasData || !snapshot.data!.exists)
+                        return ListTile(title: Text(placeId));
+                      final data = snapshot.data!.data() as Map<String,
+                          dynamic>;
+                      return ListTile(
+                        title: Text(data['name'] ?? placeId),
+                        onTap: () => widget.onPlaceSelected(placeId),
+                      );
+                    },
                   );
-                },
-              );
-            }).toList(),
-          ),
-        ),
+                }).toList(),
+              ),
+            ),
       ),
     );
   }
@@ -171,58 +189,77 @@ class _MyPageScreenState extends State<MyPageScreen> {
   void _showEditProfileDialog() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('내 정보 수정'), // (세연)
-        content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(controller: _nicknameController, decoration: const InputDecoration(labelText: '닉네임')), // (세연)
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: const InputDecoration(labelText: '성별'), // (세연)
-                items: ['여성', '남성'].map((value) {
-                  return DropdownMenuItem(value: value, child: Text(value));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedGender = val);
-                },
+      builder: (_) =>
+          AlertDialog(
+            title: const Text('내 정보 수정'), // (세연)
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(controller: _nicknameController,
+                      decoration: const InputDecoration(labelText: '닉네임')),
+                  // (세연)
+                  DropdownButtonFormField<String>(
+                    value: _selectedGender,
+                    decoration: const InputDecoration(labelText: '성별'), // (세연)
+                    items: ['여성', '남성'].map((value) {
+                      return DropdownMenuItem(value: value, child: Text(value));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedGender = val);
+                    },
+                  ),
+                  TextField(controller: _ageController,
+                      decoration: const InputDecoration(labelText: '나이'),
+                      keyboardType: TextInputType.number),
+                  // (세연)
+                  TextField(controller: _contactController,
+                      decoration: const InputDecoration(labelText: '연락처')),
+                  // (세연)
+                ],
               ),
-              TextField(controller: _ageController, decoration: const InputDecoration(labelText: '나이'), keyboardType: TextInputType.number), // (세연)
-              TextField(controller: _contactController, decoration: const InputDecoration(labelText: '연락처')), // (세연)
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context),
+                  child: const Text('취소')),
+              ElevatedButton(
+                onPressed: () async {
+                  await _firestore
+                      .collection('users')
+                      .doc(widget.currentUserId)
+                      .update({
+                    'nickname': _nicknameController.text.trim(),
+                    'gender': _selectedGender,
+                    // (세연)
+                    'age': int.tryParse(_ageController.text.trim()) ?? 0,
+                    // (세연)
+                    'contact': _contactController.text.trim(),
+                    // (세연)
+                  });
+                  _loadUserData();
+                  Navigator.pop(context);
+                },
+                child: const Text('저장'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          ElevatedButton(
-            onPressed: () async {
-              await _firestore.collection('users').doc(widget.currentUserId).update({
-                'nickname': _nicknameController.text.trim(),
-                'gender': _selectedGender, // (세연)
-                'age': int.tryParse(_ageController.text.trim()) ?? 0, // (세연)
-                'contact': _contactController.text.trim(), // (세연)
-              });
-              _loadUserData();
-              Navigator.pop(context);
-            },
-            child: const Text('저장'),
-          ),
-        ],
-      ),
     );
   }
 
-  Future<void> _deleteAccount() async { // (세연)
+  Future<void> _deleteAccount() async {
+    // (세연)
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('회원 탈퇴'),
-        content: const Text('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('탈퇴')),
-        ],
-      ),
+      builder: (_) =>
+          AlertDialog(
+            title: const Text('회원 탈퇴'),
+            content: const Text('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false),
+                  child: const Text('취소')),
+              ElevatedButton(onPressed: () => Navigator.pop(context, true),
+                  child: const Text('탈퇴')),
+            ],
+          ),
     );
 
     if (confirm == true) {
@@ -231,7 +268,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
+        MaterialPageRoute(
+            builder: (_) => LoginScreen(onLogin: widget.onLogout)),
       );
     }
   }
@@ -239,63 +277,134 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('마이페이지')),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        backgroundColor: Colors.grey[100],
+        elevation: 0,
+        title: const Row(
+          children: [
+            Icon(Icons.person_outline, color: Colors.black87),
+            SizedBox(width: 8),
+            Text(
+              '마이페이지',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          ListTile(
-            title: const Text('내 정보 수정'), // (세연)
-            trailing: const Icon(Icons.edit),
-            onTap: _showEditProfileDialog,
+          const SizedBox(height: 5),
+
+          // 프로필 카드
+          _buildProfileCard(),
+          const SizedBox(height: 10),
+
+          // 카드형 메뉴
+          _buildCardItem('내 정보 수정', Icons.edit, _showEditProfileDialog),
+          _buildCardItem('즐겨찾기 한 장소', Icons.star_border, _showFavorites),
+          _buildCardItem('여행 스케줄', Icons.calendar_month, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MyScheduleScreen(currentUserId: widget.currentUserId),
+              ),
+            );
+          }),
+          _buildCardItem('내가 쓴 글 조회', Icons.article_outlined, () => _showSimpleList('내가 쓴 글', _myPosts)),
+          _buildCardItem('댓글 단 글 조회', Icons.comment_outlined, () => _showSimpleList('댓글 단 글', _myComments)),
+
+          const SizedBox(height: 24),
+
+          // 로그아웃 / 탈퇴 버튼 그룹
+          _buildButtonGroup(),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildProfileCard() {
+    return Container(
+      padding: const EdgeInsets.all(30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
-          ListTile(
-            title: const Text('즐겨찾기 한 장소'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _showFavorites,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _nickname ?? '닉네임 없음',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          ListTile(
-            title: const Text('여행 스케줄'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
+          const SizedBox(height: 6),
+          Text('성별: $_selectedGender'),
+          Text('나이: ${_ageController.text.isNotEmpty ? _ageController.text : '미입력'}'),
+          Text('연락처: ${_contactController.text.isNotEmpty ? _contactController.text : '미입력'}'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardItem(String title, IconData icon, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Icon(icon, color: Colors.grey[700], size: 20),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: onTap,
+      ),
+    );
+  }
+
+
+  Widget _buildButtonGroup() {
+    return Center(
+      child: Column(
+        children: [
+          TextButton(
+            onPressed: () {
+              widget.onLogout(null);
+              Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => MyScheduleScreen(currentUserId: widget.currentUserId),
-                ),
+                    builder: (_) => LoginScreen(onLogin: widget.onLogout)),
               );
             },
+            child: const Text('로그아웃'),
           ),
-
-          ListTile(
-            title: const Text('내가 쓴 글 조회'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showSimpleList('내가 쓴 글', _myPosts),
-          ),
-          ListTile(
-            title: const Text('댓글 단 글 조회'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showSimpleList('댓글 단 글', _myComments),
-          ),
-          const SizedBox(height: 32),
-          Center(
-            child: Column(
-              children: [
-                TextButton(
-                  onPressed: () async {
-                    widget.onLogout(null);
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => LoginScreen(onLogin: widget.onLogout)),
-                    );
-                  },
-                  child: const Text('로그아웃'),
-                ),
-                TextButton(
-                  onPressed: _deleteAccount,
-                  child: const Text('회원 탈퇴', style: TextStyle(color: Colors.red)), // (세연)
-                ),
-              ],
-            ),
+          TextButton(
+            onPressed: _deleteAccount,
+            child: const Text('회원 탈퇴', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

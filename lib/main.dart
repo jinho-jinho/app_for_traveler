@@ -71,7 +71,17 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Travel App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        scaffoldBackgroundColor: Colors.grey[100],
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.grey, // AppBar 배경 회색
+          foregroundColor: Colors.black, // AppBar 텍스트 및 아이콘 색
+          elevation: 0,
+        ),
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          primary: Colors.grey, // 주요 색상 회색
+        ),
+      ),
       home: _currentUserId == null
           ? LoginScreen(onLogin: _setCurrentUser)
           : HomeScreen(currentUserId: _currentUserId!, onLogout: _setCurrentUser),

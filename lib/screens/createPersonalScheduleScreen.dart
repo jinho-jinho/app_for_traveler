@@ -128,7 +128,7 @@ class _CreatePersonalScheduleScreenState extends State<CreatePersonalScheduleScr
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
-                  validator: (value) => value == null || value.isEmpty ? '목적지를 입력하세요' : null,
+                  validator: (value) => value == null || value.isEmpty ? '여행지를 입력하세요' : null,
                 ),
                 const SizedBox(height: 16),
                 Row(
