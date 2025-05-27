@@ -49,6 +49,7 @@ class _EditCompanionScreenState extends State<EditCompanionScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // 1. companions 문서 수정
       await FirebaseFirestore.instance.collection('companions').doc(widget.companionId).update({
         'title': _titleController.text.trim(),
         'content': _contentController.text.trim(),
@@ -59,6 +60,28 @@ class _EditCompanionScreenState extends State<EditCompanionScreen> {
         'isClosed': false,
       });
 
+      // 2. 참가자의 joinedCompanions 문서도 갱신
+      final participantsSnap = await FirebaseFirestore.instance
+          .collection('companions')
+          .doc(widget.companionId)
+          .collection('participants')
+          .get();
+
+      for (var p in participantsSnap.docs) {
+        final userId = p.id;
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('joinedCompanions')
+            .doc(widget.companionId)
+            .update({
+          'destination': _destinationController.text.trim(),
+          'startDate': Timestamp.fromDate(_startDate!),
+          'endDate': Timestamp.fromDate(_endDate!),
+        });
+      }
+
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
@@ -67,6 +90,7 @@ class _EditCompanionScreenState extends State<EditCompanionScreen> {
 
     setState(() => _isLoading = false);
   }
+
 
   Future<void> _pickDate(bool isStart) async {
     final now = DateTime.now();
