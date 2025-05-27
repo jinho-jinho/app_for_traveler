@@ -165,7 +165,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(24),
                         child: Image.asset(
-                          'assets/images/korea.png', // 원하는 이미지 경로
+                          'assets/images/korea.png',
                           fit: BoxFit.cover,
                         ),
                       ),
