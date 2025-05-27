@@ -15,6 +15,7 @@ import 'notificationScreen.dart';
 import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
 import '../companionCard.dart';
 import 'companionListScreen.dart';
+import 'weatherScreen.dart';
 
 
 class CompanionCard extends StatelessWidget {
@@ -415,6 +416,17 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sunny),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const WeatherScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
