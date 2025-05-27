@@ -75,6 +75,19 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+      - lib/screens/assets/atm_icon.png
+      - lib/screens/assets/bank_icon.png
+      - lib/screens/assets/charging_station_icon.png
+      - lib/screens/assets/currency_exchange_icon.png
+      - lib/screens/assets/hospital_icon.png
+      - lib/screens/assets/pharmacy_icon.png
+      - lib/screens/assets/police_icon.png
+      - lib/screens/assets/locker_icon.png
+      - lib/screens/assets/public_toilet_icon.png
+      - lib/screens/assets/public_wifi_icon.png
+      - lib/screens/assets/cafe_icon.png
+      - lib/screens/assets/restaurant_icon.png
+      - lib/screens/assets/landmark_icon.png
       - assets/images/
       - assets/weather/
   # To add assets to your application, add an assets section, like this:

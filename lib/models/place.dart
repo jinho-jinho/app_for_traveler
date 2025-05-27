@@ -7,11 +7,11 @@ class Place {
   final String category;
   final String subcategory;
   final bool isEncrypted;
-  final bool isFree; // 무료/유료 여부 (물품 보관함에서 사용)
+  final bool isFree;
+  final bool isUserAdded;
   final List<Review> reviews;
   final List<String> reports;
-  final bool isUserAdded;
-  final String? imageUri; // image 추가
+  String? address; // 주소 필드 추가
 
   Place({
     required this.id,
@@ -20,11 +20,11 @@ class Place {
     required this.category,
     required this.subcategory,
     this.isEncrypted = false,
-    this.isFree = true, // 기본값은 무료
+    this.isFree = true,
+    this.isUserAdded = false,
     this.reviews = const [],
     this.reports = const [],
-    this.isUserAdded = false,
-    this.imageUri, // image 추가
+    this.address,
   });
 }
 
