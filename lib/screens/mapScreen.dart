@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:app_for_traveler/models/place.dart';
@@ -9,7 +12,9 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io'; // File 클래스용
 import 'package:image_picker/image_picker.dart'; // 이미지 피커 관련
-import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:convert';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:typed_data';
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -554,15 +559,19 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // 이미지 -> 파이어베이스 연동
-  Future<String?> uploadImageToFirebase(File imageFile) async {
+  // 이미지 업로드 함수 (base64 인코딩)
+  Future<String?> encodeImageToBase64(File imageFile) async {
     try {
-      final fileName = 'review_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(imageFile);
-      return await ref.getDownloadURL();
+      final compressed = await FlutterImageCompress.compressWithFile(
+        imageFile.absolute.path,
+        minWidth: 600,
+        quality: 70,
+      );
+      if (compressed == null) return null;
+
+      return base64Encode(compressed);
     } catch (e) {
-      print('이미지 업로드 실패: $e');
+      print('이미지 인코딩 실패: $e');
       return null;
     }
   }
@@ -669,30 +678,26 @@ class _MapScreenState extends State<MapScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(review.comment),
+
                                     if (review.imageUri != null) ... [
                                       const SizedBox(height: 8),
                                       GestureDetector(
-                                        onTap: () => _showImagePreview(review.imageUri!),
-                                        child: ClipRRect (
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (_) => Dialog(
+                                              child: InteractiveViewer(
+                                                child: _buildImageFromBase64(review.imageUri!),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: ClipRRect(
                                           borderRadius: BorderRadius.circular(8),
-                                          child: Image.file(
-                                            File(review.imageUri!),
-                                            height: 100,
-                                            width: 100,
-                                            fit: BoxFit.cover,
-                                          ),
+                                          child: _buildImageFromBase64(review.imageUri!),
                                         ),
                                       )
                                     ]
-                                    /*Padding(
-                                        padding: const EdgeInsets.only(top: 8.0),
-                                        child: Image.file(
-                                          File(review.imageUri!),
-                                          height: 100,
-                                          width: 100,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),*/
                                   ],
                                 ),
                                 // 작성자 + (본인 글이면) 삭제 버튼
@@ -782,6 +787,21 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // base64 이미지 디코딩 함수
+  Widget _buildImageFromBase64(String base64String) {
+    try {
+      Uint8List imageBytes = base64Decode(base64String);
+      return Image.memory(
+        imageBytes,
+        height: 100,
+        width: 100,
+        fit: BoxFit.cover,
+      );
+    } catch (e) {
+      return const Text('이미지 불러오기 실패');
+    }
+  }
+
   // _getNickname: Firestore에서 사용자 닉네임 조회
   // 역할: 리뷰 작성자 닉네임 가져오기
   // 분류: 로직
@@ -811,7 +831,6 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    // ImagePicker 인스턴스와 선택된 파일 참조
     final ImagePicker _picker = ImagePicker();
     XFile? pickedImage;
 
@@ -826,7 +845,6 @@ class _MapScreenState extends State<MapScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 별점 입력
                     RatingBar.builder(
                       initialRating: newRating,
                       minRating: 1,
@@ -843,7 +861,6 @@ class _MapScreenState extends State<MapScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    // 코멘트 입력
                     TextField(
                       controller: commentController,
                       decoration: const InputDecoration(
@@ -853,8 +870,6 @@ class _MapScreenState extends State<MapScreen> {
                       maxLines: 3,
                     ),
                     const SizedBox(height: 10),
-
-                    // 사진 첨부 버튼
                     ElevatedButton.icon(
                       icon: const Icon(Icons.photo),
                       label: const Text('사진 첨부'),
@@ -869,13 +884,10 @@ class _MapScreenState extends State<MapScreen> {
                         }
                       },
                     ),
-
-                    // 첨부 사진 미리보기
                     if (pickedImage != null) ...[
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () {
-                          // 다이얼로그로 전체 보기
                           showDialog(
                             context: context,
                             builder: (_) => Dialog(
@@ -908,24 +920,38 @@ class _MapScreenState extends State<MapScreen> {
                 TextButton(
                   onPressed: () async {
                     if (commentController.text.isNotEmpty) {
+                      String? uploadedUrl;
+
+                      if (pickedImage != null) {
+                        uploadedUrl = await encodeImageToBase64(File(pickedImage!.path));
+                        if (uploadedUrl == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('이미지 업로드에 실패했습니다. 다시 시도해주세요.')),
+                          );
+                          return;
+                        }
+                      }
+
                       Review newReview = Review(
                         userId: widget.currentUserId,
                         rating: newRating,
                         comment: commentController.text,
                         likes: 0,
-                        imageUri: pickedImage?.path, // imageUri 추가
+                        imageUri: uploadedUrl,
                       );
 
                       DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get();
                       List<Review> reviews = [];
+
                       if (doc.exists && (doc.data() as Map<String, dynamic>)['reviews'] != null) {
-                        reviews = (doc.data() as Map<String, dynamic>)['reviews'].map<Review>((reviewData) {
+                        reviews = (doc.data() as Map<String, dynamic>)['reviews']
+                            .map<Review>((reviewData) {
                           return Review(
                             userId: reviewData['userId'] as String,
-                            rating: reviewData['rating']?.toDouble() ?? 0.0,
+                            rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
                             comment: reviewData['comment'] as String,
-                            likes: reviewData['likes']?.toInt() ?? 0,
-                            imageUri: reviewData['imageUri'], // imageUri 추가
+                            likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
+                            imageUri: reviewData['imageUri'] as String?,
                           );
                         }).toList();
                       }
@@ -938,15 +964,52 @@ class _MapScreenState extends State<MapScreen> {
                           'rating': r.rating,
                           'comment': r.comment,
                           'likes': r.likes,
-                          'imageUri': r.imageUri, // imageUri 추가
+                          'imageUri': r.imageUri,
                         }).toList(),
                       });
 
+                      // 업데이트 된 코멘트 창 즉시 보이기
                       await _fetchData();
-
                       if (mounted) {
-                        Navigator.pop(context);
+                        Navigator.pop(context); // 다이얼로그 닫기
+
+                        // place.id에 해당하는 최신 데이터로 업데이트된 place 찾기
+                        final updateDoc = await _firestore.collection('places').doc(place.id).get();
+                        if (updateDoc.exists) {
+                          final data = updateDoc.data() as Map<String, dynamic>;
+
+                          List<Review> updatedReviews = [];
+                          if (data['reviews'] != null) {
+                            updatedReviews = (data['reviews'] as List).map((reviewData) {
+                              final r = reviewData as Map<String, dynamic>;
+                              return Review(
+                                userId: r['userId'] as String,
+                                rating: (r['rating'] as num?)?.toDouble() ?? 0.0,
+                                comment: r['comment'] as String,
+                                likes: (r['likes'] as num?)?.toInt() ?? 0,
+                                imageUri: r['imageUri'] as String?,
+                              );
+                            }).toList();
+                          }
+
+                          final updatedPlace = Place(
+                            id: data['id'],
+                            name: data['name'],
+                            location: LatLng((data['latitude'] as num).toDouble(), (data['longitude'] as num).toDouble()),
+                            category: data['category'],
+                            subcategory: data['subcategory'],
+                            isEncrypted: data['isEncrypted'] ?? false,
+                            isFree: data['isFree'] ?? true,
+                            isUserAdded: data['isUserAdded'] ?? false,
+                            reviews: updatedReviews,
+                            reports: data['reports'] != null ? List<String>.from(data['reports']) : [],
+                          );
+
+                          _showPlaceDetailsBottomSheet(updatedPlace);
+                        }
                       }
+
+
                     }
                   },
                   child: const Text('추가'),

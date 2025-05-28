@@ -32,7 +32,7 @@ class Review {
   final String userId;
   final double rating;
   final String comment;
-  int likes;
+  final int likes;
   final String? imageUri; // 사진 첨부를 위한 URI
 
   Review({
