@@ -13,6 +13,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:ui' as ui; // 이미지 리사이즈를 위해 추가
 import 'dart:typed_data'; // Uint8List를 위해 추가
 import 'package:flutter/services.dart' show rootBundle;
+import 'dart:convert';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:typed_data';
+
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -679,15 +683,19 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // 이미지 -> 파이어베이스 연동
-  Future<String?> uploadImageToFirebase(File imageFile) async {
+  // 이미지 업로드 함수 (base64 인코딩)
+  Future<String?> encodeImageToBase64(File imageFile) async {
     try {
-      final fileName = 'review_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final ref = FirebaseStorage.instance.ref().child(fileName);
-      await ref.putFile(imageFile);
-      return await ref.getDownloadURL();
+      final compressed = await FlutterImageCompress.compressWithFile(
+        imageFile.absolute.path,
+        minWidth: 600,
+        quality: 70,
+      );
+      if (compressed == null) return null;
+
+      return base64Encode(compressed);
     } catch (e) {
-      print('이미지 업로드 실패: $e');
+      print('이미지 인코딩 실패: $e');
       return null;
     }
   }
@@ -800,27 +808,73 @@ class _MapScreenState extends State<MapScreen> {
                           child: place.reviews.isEmpty
                               ? const Center(child: Text('코멘트가 없습니다.'))
                               : ListView.builder(
-                                  itemCount: place.reviews.length,
-                                  itemBuilder: (context, index) {
-                                    final review = place.reviews[index];
-                                    return ListTile(
-                                      // 별점과 코멘트 + 이미지 표시
-                                      title: Text('별점: ${review.rating}'),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(review.comment),
-                                          if (review.imageUri != null) ...[
-                                            const SizedBox(height: 8),
-                                            GestureDetector(
-                                              onTap: () => _showImagePreview(review.imageUri!),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(8),
-                                                child: Image.file(
-                                                  File(review.imageUri!),
-                                                  height: 100,
-                                                  width: 100,
-                                                  fit: BoxFit.cover,
+
+                            itemCount: place.reviews.length,
+                            itemBuilder: (context, index) {
+                              final review = place.reviews[index];
+                              return ListTile(
+                                // 별점과 코멘트 + 이미지 표시
+                                title: Text('별점: ${review.rating}'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(review.comment),
+
+                                    if (review.imageUri != null) ...[
+                                      const SizedBox(height: 8),
+                                      GestureDetector(
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (_) => Dialog(
+                                              child: InteractiveViewer(
+                                                child: _buildImageFromBase64(review.imageUri!),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: _buildImageFromBase64(review.imageUri!),
+                                        ),
+                                      )
+                                    ]
+                                  ],
+                                ),
+                                // 작성자 + (본인 글이면) 삭제 버튼
+                                trailing: FutureBuilder<String>(
+                                  future: _getNickname(review.userId),
+                                  builder: (context, nickSnap) {
+                                    if (nickSnap.connectionState == ConnectionState.waiting) {
+                                      return const Text('로딩 중...');
+                                    }
+                                    final nickname = nickSnap.data ?? review.userId;
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('작성자: $nickname'),
+                                        const SizedBox(width: 8),
+                                        if (widget.currentUserId == review.userId)
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                            onPressed: () async {
+                                              // 삭제 확인 다이얼로그
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('리뷰 삭제'),
+                                                  content: const Text('이 리뷰를 삭제하시겠습니까?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: const Text('취소'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      child: const Text('삭제'),
+                                                    ),
+                                                  ],
+
                                                 ),
                                               ),
                                             )
@@ -912,6 +966,21 @@ class _MapScreenState extends State<MapScreen> {
         );
       },
     );
+  }
+
+  // base64 이미지 디코딩 함수
+  Widget _buildImageFromBase64(String base64String) {
+    try {
+      Uint8List imageBytes = base64Decode(base64String);
+      return Image.memory(
+        imageBytes,
+        height: 100,
+        width: 100,
+        fit: BoxFit.cover,
+      );
+    } catch (e) {
+      return const Text('이미지 불러오기 실패');
+    }
   }
 
   // _getNickname: Firestore에서 사용자 닉네임 조회
@@ -1040,16 +1109,29 @@ class _MapScreenState extends State<MapScreen> {
                 TextButton(
                   onPressed: () async {
                     if (commentController.text.isNotEmpty) {
+                      String? uploadedUrl;
+
+                      if (pickedImage != null) {
+                        uploadedUrl = await encodeImageToBase64(File(pickedImage!.path));
+                        if (uploadedUrl == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('이미지 업로드에 실패했습니다. 다시 시도해주세요.')),
+                          );
+                          return;
+                        }
+                      }
+
                       Review newReview = Review(
                         userId: widget.currentUserId,
                         rating: newRating,
                         comment: commentController.text,
                         likes: 0,
-                        imageUri: pickedImage?.path, // imageUri 추가
+                        imageUri: uploadedUrl,
                       );
 
                       DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get();
                       List<Review> reviews = [];
+
                       if (doc.exists && (doc.data() as Map<String, dynamic>)['reviews'] != null) {
                         reviews = (doc.data() as Map<String, dynamic>)['reviews'].map<Review>((reviewData) {
                           return Review(
@@ -1076,8 +1158,45 @@ class _MapScreenState extends State<MapScreen> {
 
                       await _fetchData();
 
+                      // 업데이트 된 코멘트 창 즉시 보이기
+                      await _fetchData();
                       if (mounted) {
-                        Navigator.pop(context);
+                        Navigator.pop(context); // 다이얼로그 닫기
+
+                        // place.id에 해당하는 최신 데이터로 업데이트된 place 찾기
+                        final updateDoc = await _firestore.collection('places').doc(place.id).get();
+                        if (updateDoc.exists) {
+                          final data = updateDoc.data() as Map<String, dynamic>;
+
+                          List<Review> updatedReviews = [];
+                          if (data['reviews'] != null) {
+                            updatedReviews = (data['reviews'] as List).map((reviewData) {
+                              final r = reviewData as Map<String, dynamic>;
+                              return Review(
+                                userId: r['userId'] as String,
+                                rating: (r['rating'] as num?)?.toDouble() ?? 0.0,
+                                comment: r['comment'] as String,
+                                likes: (r['likes'] as num?)?.toInt() ?? 0,
+                                imageUri: r['imageUri'] as String?,
+                              );
+                            }).toList();
+                          }
+
+                          final updatedPlace = Place(
+                            id: data['id'],
+                            name: data['name'],
+                            location: LatLng((data['latitude'] as num).toDouble(), (data['longitude'] as num).toDouble()),
+                            category: data['category'],
+                            subcategory: data['subcategory'],
+                            isEncrypted: data['isEncrypted'] ?? false,
+                            isFree: data['isFree'] ?? true,
+                            isUserAdded: data['isUserAdded'] ?? false,
+                            reviews: updatedReviews,
+                            reports: data['reports'] != null ? List<String>.from(data['reports']) : [],
+                          );
+
+                          _showPlaceDetailsBottomSheet(updatedPlace);
+                        }
                       }
                     }
                   },
@@ -1382,139 +1501,165 @@ class _MapScreenState extends State<MapScreen> {
     print('병원 데이터 개수: ${_hospitals.length}');
     if (_categoryEnabled['병원'] == true) {
       markers.addAll(_hospitals.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: hospitalIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: hospitalIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('약국 데이터 개수: ${_pharmacies.length}');
     if (_categoryEnabled['약국'] == true) {
       markers.addAll(_pharmacies.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: pharmacyIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: pharmacyIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('경찰서 데이터 개수: ${_policeStations.length}');
     if (_categoryEnabled['경찰서'] == true) {
       markers.addAll(_policeStations.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: policeIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: policeIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('ATM 데이터 개수: ${_atms.length}');
     if (_categoryEnabled['ATM'] == true) {
       markers.addAll(_atms.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: atmIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: atmIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('은행 데이터 개수: ${_banks.length}');
     if (_categoryEnabled['은행'] == true) {
       markers.addAll(_banks.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: bankIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: bankIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('환전소 데이터 개수: ${_currencyExchanges.length}');
     if (_categoryEnabled['환전소'] == true) {
       markers.addAll(_currencyExchanges.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: currencyExchangeIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: currencyExchangeIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('공중 화장실 데이터 개수: ${_publicToilets.length}');
     if (_categoryEnabled['공중 화장실'] == true) {
       markers.addAll(_publicToilets.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: publicToiletIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: publicToiletIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
       markers.addAll(_restrooms.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: publicToiletIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: publicToiletIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('물품 보관함 데이터 개수: ${_lockers.length}');
     if (_categoryEnabled['물품 보관함'] == true) {
       markers.addAll(_lockers.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: place.isFree
-                ? (lockerFreeIcon ?? BitmapDescriptor.defaultMarker)
-                : (lockerPaidIcon ?? BitmapDescriptor.defaultMarker),
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: place.isFree
+            ? (lockerFreeIcon ?? BitmapDescriptor.defaultMarker)
+            : (lockerPaidIcon ?? BitmapDescriptor.defaultMarker),
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('휴대폰 충전소 데이터 개수: ${_chargingStations.length}');
     if (_categoryEnabled['휴대폰 충전소'] == true) {
       markers.addAll(_chargingStations.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: chargingStationIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: chargingStationIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('공공 와이파이 데이터 개수: ${_publicWifis.length}');
     if (_categoryEnabled['공공 와이파이'] == true) {
       markers.addAll(_publicWifis.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: publicWifiIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: publicWifiIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('카페 데이터 개수: ${_cafes.length}');
     if (_categoryEnabled['카페'] == true) {
       markers.addAll(_cafes.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: cafeIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: cafeIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('음식점 데이터 개수: ${_restaurants.length}');
     if (_categoryEnabled['음식점'] == true) {
       markers.addAll(_restaurants.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: restaurantIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: restaurantIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('랜드마크 데이터 개수: ${_landmarks.length}');
     if (_categoryEnabled['랜드마크'] == true) {
       markers.addAll(_landmarks.map((place) => Marker(
-            markerId: MarkerId(place.id),
-            position: place.location,
-            icon: landmarkIcon ?? BitmapDescriptor.defaultMarker,
-            onTap: () => _showPlaceDetailsBottomSheet(place),
-          )));
+
+        markerId: MarkerId(place.id),
+        position: place.location,
+        icon: landmarkIcon ?? BitmapDescriptor.defaultMarker,
+        onTap: () => _showPlaceDetailsBottomSheet(place),
+      )));
+
     }
 
     print('총 생성된 마커 개수: ${markers.length}');
