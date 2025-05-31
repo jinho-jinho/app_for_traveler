@@ -135,7 +135,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 flex: 1,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.blueGrey.withOpacity(0.8),
+                    color: const Color.fromARGB(255, 173, 191, 200).withOpacity(0.8),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   padding: const EdgeInsets.all(12),
