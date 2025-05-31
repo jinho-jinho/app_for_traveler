@@ -1611,6 +1611,141 @@ class _MapScreenState extends State<MapScreen> {
     return markers;
   }
 
+void _showSearchDialog() {
+  showDialog(
+    context: context,
+    builder: (context) {
+      String searchText = '';
+      List<Place> searchResults = [];
+      bool isSearching = false;
+
+      return StatefulBuilder(
+        builder: (context, setState) {
+          Future<void> _handleSearch(String keyword) async {
+            if (keyword.trim().isEmpty) return;
+
+            setState(() => isSearching = true);
+            try {
+              final results = await searchPlacesFromFirestore(keyword);
+              searchResults = results;
+            } catch (e) {
+              searchResults = [];
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('검색 실패: $e')),
+              );
+            } finally {
+              setState(() => isSearching = false);
+            }
+          }
+
+          final bool hasResults = searchResults.isNotEmpty || isSearching;
+
+          return AlertDialog(
+            content: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              height: hasResults ? 500 : 100,
+              width: 500,
+              child: Column(
+                children: [
+  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          autofocus: true,
+                          textInputAction: TextInputAction.search,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter Place Name',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onSubmitted: (value) {
+                            searchText = value;
+                            _handleSearch(value);
+                          },
+                          onChanged: (value) {
+                            searchText = value;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => _handleSearch(searchText),
+                        child: const Text('Search'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 검색 후에만 아래 리스트 표시
+                  if (hasResults)
+                    Expanded(
+                      child: isSearching
+                          ? const Center(child: CircularProgressIndicator())
+                          : searchResults.isEmpty
+                              ? const Center(child: Text('No search results found.'))
+                              : ListView.builder(
+                                  itemCount: searchResults.length,
+                                  itemBuilder: (context, index) {
+                                    final place = searchResults[index];
+                                    return _buildSearchResultCard(
+                                      place,
+                                      () async {
+                                        Navigator.pop(context);
+                                        await _moveToSelectedPlace(place.id);
+                                      },
+                                    );
+                                  },
+                                ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+
+  Widget _buildSearchResultCard(Place place, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: const Icon(Icons.location_on_outlined, color: Colors.redAccent, size: 22),
+        title: Text(
+          place.name,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          place.address ?? 'No Address',
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: onTap,
+      ),
+    );
+  }
+
   // build: 지도, 카테고리 필터, 로딩 UI 렌더링
   // 역할: 지도 화면 및 UI 구성
   // 분류: 디자인
@@ -1643,6 +1778,17 @@ class _MapScreenState extends State<MapScreen> {
             myLocationButtonEnabled: true,
           )
               : const Center(child: Text('지도 로드 대기 중...')),
+              Positioned(
+                bottom: 16, 
+                left: 16,   
+                child: FloatingActionButton(
+                  heroTag: 'search_button', 
+                  onPressed: _showSearchDialog,
+                  child: const Icon(Icons.search),
+                  tooltip: '장소 검색',
+                ),
+              ),
+
           Positioned(
             top: 10,
             left: 10,
@@ -1687,4 +1833,34 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
+}
+Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
+  final firestore = FirebaseFirestore.instance;
+
+  final querySnapshot = await firestore
+      .collection('places')
+      .where('name', isGreaterThanOrEqualTo: keyword)
+      .where('name', isLessThan: keyword + '\uf8ff')
+      .get();
+
+  return querySnapshot.docs.map((doc) {
+    final data = doc.data();
+
+    return Place(
+      id: doc.id,
+      name: data['name'] ?? '',
+      address: data['address'],
+      category: data['category'] ?? '',
+      location: LatLng(
+        (data['latitude'] as num).toDouble(),
+        (data['longitude'] as num).toDouble(),
+      ),
+      subcategory: data['subcategory'] ?? '',
+      isEncrypted: data['isEncrypted'] ?? false,
+      isFree: data['isFree'] ?? true,
+      isUserAdded: data['isUserAdded'] ?? false,
+      reviews: [], // 리뷰는 필요 시 따로
+      reports: [],
+    );
+  }).toList();
 }
