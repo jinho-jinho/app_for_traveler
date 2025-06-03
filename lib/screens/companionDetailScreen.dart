@@ -208,7 +208,13 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       await _firestore.runTransaction((tx) async {
         final snapshot = await tx.get(docRef);
         final data = snapshot.data()!;
+
+
+
+
+
         final currentCount = data['currentCount'] ?? 1;
+
 
         tx.delete(docRef.collection('participants').doc(widget.currentUserId));
 
@@ -469,6 +475,20 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
         final currentCount = data['currentCount'] ?? 0;
         final maxCount = data['maxCount'] ?? 0;
 
+
+        final ageConditionRaw = data['ageCondition'];
+        String ageText = '연령 무관';
+
+        if (ageConditionRaw is Map && ageConditionRaw['type'] == '범위') {
+          final min = ageConditionRaw['min'] ?? '?';
+          final max = ageConditionRaw['max'] ?? '?';
+          ageText = '$min세 ~ $max세';
+        } else if (ageConditionRaw is String) {
+          ageText = ageConditionRaw;
+        }
+
+
+
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -550,13 +570,16 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
               const SizedBox(height: 8),
               Text('👥 $currentCount / $maxCount', style: const TextStyle(color: Colors.black54)),
 
+
+
+
               // 모집 조건 표시
-              const SizedBox(height: 8),
               Text('✅ 참여 조건: '
-                  '${data['genderCondition'] ?? '무관'} / '
-                  '${data['ageCondition'] is List ? '${data['ageCondition'][0]}세~${data['ageCondition'][1]}세' : '연령 무관'}',
+                  '${data['genderCondition'] ?? '무관'} / $ageText',
                 style: const TextStyle(color: Colors.black87),
               ),
+
+
 
               const SizedBox(height: 12),
               Text('파티장: ${data['leaderName'] ?? ''}', style: const TextStyle(color: Colors.grey)),

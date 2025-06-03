@@ -77,6 +77,7 @@ class _MyAppState extends State<MyApp> {
           backgroundColor: Colors.grey, // AppBar 배경 회색
           foregroundColor: Colors.black, // AppBar 텍스트 및 아이콘 색
           elevation: 0,
+          scrolledUnderElevation: 0,
         ),
         colorScheme: ColorScheme.fromSwatch().copyWith(
           primary: Colors.grey, // 주요 색상 회색
