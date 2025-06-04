@@ -17,7 +17,14 @@ import '../companionCard.dart';
 import 'companionListScreen.dart';
 import 'weatherScreen.dart';
 
+// 추가된 임포트 (RecommendationService와 WeatherDataFetcher가 별도 파일에 있다고 가정)
+import 'package:app_for_traveler/services/recommendation_service.dart';
+import 'package:app_for_traveler/services/weather_data_fetcher.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
+
+// 기존 CompanionCard 정의 (이 파일에 없으면 CompanionCard.dart에서 임포트)
 class CompanionCard extends StatelessWidget {
   final String title;
   final String destination;
@@ -80,6 +87,7 @@ class CompanionCard extends StatelessWidget {
   }
 }
 
+// 기존 TravelMateSection 정의 (이 파일에 없으면 TravelMateSection.dart에서 임포트)
 class TravelMateSection extends StatefulWidget {
   final String currentUserId;
 
@@ -190,7 +198,6 @@ class _TravelMateSectionState extends State<TravelMateSection> {
 }
 
 
-
 class HomeScreen extends StatefulWidget {
   final String currentUserId;
   final Function(String?) onLogout;
@@ -214,6 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _disasterAlerts = [];
   List<Map<String, dynamic>> _commentAlerts = [];
 
+  // HomeContent에서 받아올 날씨 데이터를 저장할 변수
+  Map<String, dynamic>? _weatherDataForWeatherScreen;
+
   @override
   void initState() {
     super.initState();
@@ -222,6 +232,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _startDisasterCheckTimer();
     _loadAllAlerts();
   }
+
+  // HomeContent로부터 날씨 데이터를 받을 콜백 함수
+  void _updateWeatherDataFromHomeContent(Map<String, dynamic>? data) {
+    setState(() {
+      _weatherDataForWeatherScreen = data;
+    });
+  }
+
+  // HomeScreen의 탭을 변경하고, 필요시 선택된 장소 ID를 설정하는 공용 메서드
+  void changeTab(int index, {String? placeId}) {
+    setState(() {
+      _selectedIndex = index;
+      _selectedPlaceId = placeId; // 지도 탭으로 이동할 때만 placeId가 유효함
+    });
+  }
+
 
   Future<void> _loadAllAlerts() async {
     final disasters = await _loadDisasterAlerts();
@@ -251,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _generateTodayKey() {
     final now = DateTime.now();
-    return '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    return '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}}';
   }
 
   Future<void> _saveShownDisasterSNs() async {
@@ -318,14 +344,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return disasters
         .where((d) => savedSnList.contains(d['sn'].toString()))
         .map((d) {
-          final snStr = d['sn'].toString();
-          final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
-          return {
-            'sn': d['sn'],
-            'message': d['msg'],
-            'timestamp': t,
-          };
-        })
+      final snStr = d['sn'].toString();
+      final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
+      return {
+        'sn': d['sn'],
+        'message': d['msg'],
+        'timestamp': t,
+      };
+    })
         .toList();
   }
 
@@ -399,14 +425,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      if (index != 1) {
-        _selectedPlaceId = null;
-      }
-    });
-  }
+  // 이 메서드는 이제 HomeScreen 내부에서만 사용되고, 외부에서는 changeTab을 통해 접근합니다.
+  // 이 메서드를 직접 호출하는 대신, HomeScreen의 changeTab 메서드를 사용하도록 변경할 것입니다.
+  // void _onItemTapped(int index) {
+  //   setState(() {
+  //     _selectedIndex = index;
+  //     if (index != 1) {
+  //       _selectedPlaceId = null;
+  //     }
+  //   });
+  // }
+
 
   @override
   Widget build(BuildContext context) {
@@ -422,7 +451,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const WeatherScreen(),
+                  builder: (_) => WeatherScreen(
+                    initialWeatherData: _weatherDataForWeatherScreen, // 날씨 데이터 전달
+                  ),
                 ),
               );
             },
@@ -445,29 +476,38 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: _selectedIndex == 0
-          ? HomeContent(currentUserId: widget.currentUserId) // 🔥 여기에 전달
-          : _selectedIndex == 1
-              ? MapScreen(
-                  currentUserId: widget.currentUserId,
-                  selectedPlaceId: _selectedPlaceId,
-                  key: const ValueKey('map_screen'),
-                )
-              : _selectedIndex == 2
-                  ? BoardScreen(
-                      currentUserId: widget.currentUserId,
-                      currentUserNickname: _currentUserNickname,
-                    )
-                  : MyPageScreen(
-                      currentUserId: widget.currentUserId,
-                      onLogout: widget.onLogout,
-                      onPlaceSelected: (placeId) {
-                        setState(() {
-                          _selectedIndex = 1;
-                          _selectedPlaceId = placeId;
-                        });
-                      },
-                    ),
+      body: Center(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            // HomeContent에 새로운 콜백 'onTabChanged'를 전달합니다.
+            HomeContent(
+              currentUserId: widget.currentUserId,
+              onWeatherDataReady: _updateWeatherDataFromHomeContent,
+              onTabChanged: changeTab, // HomeScreen의 changeTab 메서드를 전달
+            ),
+            MapScreen(
+              currentUserId: widget.currentUserId,
+              selectedPlaceId: _selectedPlaceId,
+              key: const ValueKey('map_screen'),
+            ),
+            BoardScreen(
+              currentUserId: widget.currentUserId,
+              currentUserNickname: _currentUserNickname,
+            ),
+            MyPageScreen(
+              currentUserId: widget.currentUserId,
+              onLogout: widget.onLogout,
+              // MyPageScreen에서도 탭 변경이 필요할 경우, changeTab을 전달할 수 있습니다.
+              // 여기서는 이미 onPlaceSelected가 유사한 역할을 하므로 그대로 둡니다.
+              onPlaceSelected: (placeId) {
+                changeTab(1, placeId: placeId); // 지도 탭으로 이동하며 placeId 설정
+              },
+            ),
+            CompanionListScreen(currentUserId: widget.currentUserId), // 예시로 추가, 실제 앱 구조에 따라 위치 변경
+          ],
+        ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
@@ -482,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedLabelStyle: const TextStyle(color: Colors.grey),
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
-        onTap: _onItemTapped,
+        onTap: changeTab, // 여기서는 직접 changeTab을 호출
       ),
     );
   }
@@ -494,7 +534,15 @@ class _HomeScreenState extends State<HomeScreen> {
 // 역할: 추천, 인기 장소, 최근 게시물 표시
 class HomeContent extends StatefulWidget {
   final String currentUserId;
-  const HomeContent({super.key, required this.currentUserId});
+  final Function(Map<String, dynamic>?) onWeatherDataReady;
+  final Function(int index, {String? placeId}) onTabChanged; // 새로운 콜백 추가
+
+  const HomeContent({
+    super.key,
+    required this.currentUserId,
+    required this.onWeatherDataReady,
+    required this.onTabChanged, // 생성자에 추가
+  });
 
   @override
   _HomeContentState createState() => _HomeContentState();
@@ -508,6 +556,42 @@ class _HomeContentState extends State<HomeContent> {
   List<Map<String, dynamic>> _topPlaces = [];
   List<Map<String, dynamic>> _recentPosts = [];
 
+  // --- 날씨, 배터리, Wi-Fi 관련 상태 변수 추가 ---
+  double _latitude = 0.0;
+  double _longitude = 0.0;
+  Map<String, dynamic>? _weatherData;
+  bool _isLoadingWeather = true;
+  String _weatherError = '';
+
+  int _batteryLevel = 100;
+  BatteryState _batteryState = BatteryState.full;
+  late StreamSubscription<BatteryState> _batteryStateSubscription;
+  Timer? _batteryLevelTimer;
+
+  List<ConnectivityResult> _connectivityResult = [ConnectivityResult.none]; // 초기값도 리스트로 설정
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription; // 구독 타입도 리스트로 변경
+
+  // 서비스 인스턴스
+  final WeatherDataFetcher _weatherFetcher = WeatherDataFetcher();
+  final RecommendationService _recommendationService = RecommendationService(); // RecommendationService 인스턴스
+  final Battery _battery = Battery();
+  final Connectivity _connectivity = Connectivity();
+  // --- 여기까지 추가 ---
+
+  void _initConnectivity() async {
+    // 이제 _connectivityResult는 List<ConnectivityResult>를 받을 수 있습니다.
+    _connectivityResult = await _connectivity.checkConnectivity();
+    if (mounted) setState(() {});
+
+    // 2. listen 콜백 함수의 result 인자 타입도 List<ConnectivityResult>로 변경
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> result) {
+      if (mounted) {
+        setState(() {
+          _connectivityResult = result;
+        });
+      }
+    });
+  }
   // initState: 위젯 초기화, 데이터 조회 시작
   // 역할: 데이터 초기화
   // 분류: 로직
@@ -516,7 +600,86 @@ class _HomeContentState extends State<HomeContent> {
     super.initState();
     _fetchTopPlaces();
     _fetchRecentPosts();
+    _loadRecommendationData(); // 추천 관련 데이터 로드 함수 추가
   }
+
+  @override
+  void dispose() {
+    _batteryStateSubscription.cancel();
+    _connectivitySubscription.cancel();
+    _batteryLevelTimer?.cancel();
+    super.dispose();
+  }
+
+  // --- 추천 관련 데이터 로드 함수 추가 ---
+  Future<void> _loadRecommendationData() async {
+    await _loadWeatherAndForecast();
+    _initBatteryState();
+    _initConnectivity();
+  }
+
+  Future<void> _loadWeatherAndForecast() async {
+    setState(() {
+      _isLoadingWeather = true;
+      _weatherError = '';
+    });
+
+    try {
+      final position = await _weatherFetcher.getCurrentLocation(context);
+      if (position != null) {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        final data = await _weatherFetcher.fetchWeatherData(_latitude, _longitude);
+        if (mounted) {
+          setState(() {
+            _weatherData = data;
+            _isLoadingWeather = false;
+          });
+        }
+        widget.onWeatherDataReady(_weatherData); // 데이터 로드 완료 후 HomeScreen으로 전달
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoadingWeather = false;
+            _weatherError = '위치 정보를 가져올 수 없습니다.';
+          });
+        }
+        widget.onWeatherDataReady(null); // 데이터 로드 실패 시 HomeScreen으로 null 전달
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+          _weatherError = '날씨 정보를 가져오는 중 오류 발생: $e';
+        });
+      }
+      widget.onWeatherDataReady(null); // 오류 발생 시 HomeScreen으로 null 전달
+    }
+  }
+
+  void _initBatteryState() async {
+    _batteryLevel = await _battery.batteryLevel;
+    _batteryState = await _battery.batteryState;
+    if (mounted) setState(() {});
+
+    _batteryStateSubscription = _battery.onBatteryStateChanged.listen((BatteryState state) {
+      if (mounted) {
+        setState(() {
+          _batteryState = state;
+        });
+      }
+    });
+
+    _batteryLevelTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+      final level = await _battery.batteryLevel;
+      if (mounted) {
+        setState(() {
+          _batteryLevel = level;
+        });
+      }
+    });
+  }
+  // --- 여기까지 추가 ---
 
   // _fetchTopPlaces: Firestore에서 인기 장소 가져와 정렬 후 상태 업데이트
   // 역할: 장소 데이터 조회 및 처리
@@ -568,7 +731,9 @@ class _HomeContentState extends State<HomeContent> {
           _topPlaces = places.take(10).toList();
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      print('🔥 인기 장소 로드 실패: $e');
+    }
   }
 
   // _fetchRecentPosts: Firestore에서 최근 3개 게시물 가져와 상태 업데이트
@@ -599,7 +764,9 @@ class _HomeContentState extends State<HomeContent> {
           _recentPosts = posts;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      print('🔥 최근 게시물 로드 실패: $e');
+    }
   }
 
   // build: 추천, 인기 장소, 최근 게시물 UI 렌더링
@@ -607,14 +774,21 @@ class _HomeContentState extends State<HomeContent> {
   // 분류: 디자인
   @override
   Widget build(BuildContext context) {
+    // 추천 메시지 생성
+    String currentRecommendation = _recommendationService.getRecommendation(
+      weatherData: _weatherData,
+      batteryLevel: _batteryLevel,
+      batteryState: _batteryState,
+      connectivityResult: _connectivityResult.isNotEmpty ? _connectivityResult.first : ConnectivityResult.none, // 이제 List<ConnectivityResult>가 전달됩니다.
+    );
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: 20),
-          // 추천 섹션: 날씨 기반 활동 제안 및 지도 화면 이동 버튼
-          // 역할: 추천 UI 표시
-          // 분류: 디자인
+
+          // --- 현재 상태 기반 추천 섹션 (수정) ---
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
@@ -643,30 +817,39 @@ class _HomeContentState extends State<HomeContent> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '비가 오니 실내 활동을 추천드려요!',
-                  style: TextStyle(fontSize: 18),
+                Text(
+                  currentRecommendation, // 동적으로 생성된 추천 메시지
+                  style: const TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
-                    final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                    homeState?._onItemTapped(1);
+                    // 이제 직접 HomeScreen의 탭 변경 메서드를 호출합니다.
+                    widget.onTabChanged(1); // 탭 인덱스 1 (지도 화면)으로 이동
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     textStyle: const TextStyle(fontSize: 18),
+                    backgroundColor: Colors.blueAccent, // 버튼 색상
+                    foregroundColor: Colors.white, // 텍스트 색상
                   ),
-                  child: const Text('실내 카페 추천 지도 보기'),
+                  child: const Text('관련 장소 지도 보기'), // 버튼 텍스트 변경
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 30),
-          // 인기 장소 섹션: 찜 수 기준 상위 10개 장소 표시 및 지도 이동
-          // 역할: 인기 장소 UI 표시
-          // 분류: 디자인
+          const SizedBox(height: 20), // 기존 30에서 20으로 변경하여 간격 조절
+
+          // --- 현재 날씨 정보 표시 섹션 추가 ---
+          _buildWeatherDisplay(),
+          const SizedBox(height: 20),
+
+          // --- 현재 배터리 및 네트워크 상태 정보 표시 섹션 추가 ---
+          _buildStatusInfoCard(),
+          const SizedBox(height: 30), // 이전에 30 유지
+
+          // 인기 장소 섹션
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -682,25 +865,22 @@ class _HomeContentState extends State<HomeContent> {
                   child: _topPlaces.isEmpty
                       ? const Center(child: Text('인기 장소가 없습니다.'))
                       : ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _topPlaces.length,
-                          itemBuilder: (context, index) {
-                            final place = _topPlaces[index];
-                            return HotspotCard(
-                              title: place['name'],
-                              description: place['description'],
-                              averageRating: place['averageRating'],
-                              latestReview: place['latestReview'],
-                              onTap: () {
-                                final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                                homeState?.setState(() {
-                                  homeState._selectedIndex = 1;
-                                  homeState._selectedPlaceId = place['id'];
-                                });
-                              },
-                            );
-                          },
-                        ),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _topPlaces.length,
+                    itemBuilder: (context, index) {
+                      final place = _topPlaces[index];
+                      return HotspotCard(
+                        title: place['name'],
+                        description: place['description'],
+                        averageRating: place['averageRating'],
+                        latestReview: place['latestReview'],
+                        onTap: () {
+                          // HotspotCard 탭 시 지도 탭으로 이동하며 해당 장소 ID 전달
+                          widget.onTabChanged(1, placeId: place['id']);
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -709,9 +889,8 @@ class _HomeContentState extends State<HomeContent> {
 
           TravelMateSection(currentUserId: widget.currentUserId),
           const SizedBox(height: 30),
-          // 최근 게시물 섹션: 최신 3개 게시물 표시 및 게시판 이동
-          // 역할: 게시물 UI 표시
-          // 분류: 디자인
+
+          // 최근 게시물 섹션
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
@@ -738,39 +917,39 @@ class _HomeContentState extends State<HomeContent> {
                 const SizedBox(height: 12),
                 _recentPosts.isEmpty
                     ? const Text(
-                        '게시물이 없습니다.',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      )
+                  '게시물이 없습니다.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                )
                     : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _recentPosts.length,
-                        itemBuilder: (context, index) {
-                          final post = _recentPosts[index];
-                          return ListTile(
-                            title: Text(
-                              post['title'] ?? '제목 없음',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
-                              style: const TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                            onTap: () {
-                              final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                              homeState?._onItemTapped(2);
-                            },
-                          );
-                        },
-                        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _recentPosts.length,
+                  itemBuilder: (context, index) {
+                    final post = _recentPosts[index];
+                    return ListTile(
+                      title: Text(
+                        post['title'] ?? '제목 없음',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      subtitle: Text(
+                        '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      onTap: () {
+                        // 게시물 탭 시 게시판 탭으로 이동
+                        widget.onTabChanged(2);
+                      },
+                    );
+                  },
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
-                    final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                    homeState?._onItemTapped(2);
+                    // 더 많은 게시물 보기 버튼 탭 시 게시판 탭으로 이동
+                    widget.onTabChanged(2);
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -782,6 +961,128 @@ class _HomeContentState extends State<HomeContent> {
             ),
           ),
           const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // --- 날씨 정보 표시 위젯 ---
+  Widget _buildWeatherDisplay() {
+    if (_isLoadingWeather) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    } else if (_weatherError.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Center(
+          child: Text(
+            '날씨 정보 오류: $_weatherError',
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    } else if (_weatherData != null) {
+      final current = _weatherData!['weather'];
+      final temp = current['main']['temp'].toStringAsFixed(1);
+      final desc = current['weather'][0]['description'];
+      final iconCode = current['weather'][0]['icon'];
+      final city = current['name'];
+      final iconPath = 'assets/weather/$iconCode.png';
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$city의 현재 날씨',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$temp°C',
+                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      desc,
+                      style: const TextStyle(fontSize: 18, color: Colors.white70),
+                    ),
+                  ],
+                ),
+                Image.asset(
+                  iconPath,
+                  width: 80,
+                  height: 80,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.cloud, size: 80, color: Colors.white),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    return Container();
+  }
+
+  // --- 상태 정보 카드 위젯 ---
+  Widget _buildStatusInfoCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.teal.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '현재 상태 정보',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const Divider(color: Colors.white54),
+          Text(
+            '🔋 배터리 레벨: $_batteryLevel%',
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
+          Text(
+            '🔌 배터리 상태: ${_batteryState.toString().split('.').last}',
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
+          Text(
+            '📶 네트워크: ${_connectivityResult.toString().split('.').last}',
+            style: const TextStyle(fontSize: 15, color: Colors.white70),
+          ),
         ],
       ),
     );

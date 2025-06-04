@@ -4,12 +4,17 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class WeatherScreen extends StatefulWidget {
-  const WeatherScreen({super.key});
+  // 1. initialWeatherData 파라미터 추가
+  final Map<String, dynamic>? initialWeatherData;
+
+  const WeatherScreen({
+    super.key,
+    this.initialWeatherData, // 생성자에 추가
+  });
 
   @override
   State<WeatherScreen> createState() => _WeatherScreenState();
 }
-
 class _WeatherScreenState extends State<WeatherScreen> {
   var latitude = 0.0;
   var longitude = 0.0;
@@ -43,10 +48,10 @@ class _WeatherScreenState extends State<WeatherScreen> {
       if (permission == LocationPermission.denied) return null;
     }
 
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   Future<Map<String, dynamic>> fetchWeatherData() async {
+    //return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
     const apiKey = 'd466dff3cefa829496644e53b72c2940';
     final dio = Dio();
 
