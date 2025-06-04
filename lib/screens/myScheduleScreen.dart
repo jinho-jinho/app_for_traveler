@@ -98,12 +98,16 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
     final todayEvents = _getEventsForDay(_selectedDay!);
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('나의 여행 스케줄'),
+        title: const Text('나의 여행 스케줄', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
         backgroundColor: Colors.grey[100],
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, color: Colors.black87),
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -123,7 +127,11 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
             firstDay: DateTime(2023),
             lastDay: DateTime(2030),
             calendarFormat: CalendarFormat.month,
-            headerStyle: const HeaderStyle(formatButtonVisible: false),
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              titleTextStyle: TextStyle(fontWeight: FontWeight.bold),
+            ),
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
@@ -132,26 +140,41 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
               });
             },
             eventLoader: _getEventsForDay,
+            calendarStyle: const CalendarStyle(
+              todayDecoration: BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
+              selectedDecoration: BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+              selectedTextStyle: TextStyle(color: Colors.white),
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
             child: todayEvents.isEmpty
                 ? const Center(child: Text('해당 날짜에 등록된 일정이 없습니다.'))
-                : ListView(
-              children: () {
-                final sortedEvents = List<Map<String, dynamic>>.from(todayEvents);
-                sortedEvents.sort((a, b) {
-                  final aDate = (a['startDate'] ?? a['date']) as Timestamp;
-                  final bDate = (b['startDate'] ?? b['date']) as Timestamp;
-                  return aDate.compareTo(bDate);
-                });
-                return sortedEvents.map((event) {
-                  final title = event['isCompanion'] ? '[동행] ${event['title']}' : event['title'];
-                  final subtitle = event['destination'] ?? '';
+                : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: todayEvents.length,
+              itemBuilder: (context, index) {
+                final sortedEvents = List<Map<String, dynamic>>.from(todayEvents)
+                  ..sort((a, b) {
+                    final aDate = (a['startDate'] ?? a['date']) as Timestamp;
+                    final bDate = (b['startDate'] ?? b['date']) as Timestamp;
+                    return aDate.compareTo(bDate);
+                  });
 
-                  return ListTile(
-                    title: Text(title),
-                    subtitle: Text(subtitle),
+                final event = sortedEvents[index];
+                final title = event['isCompanion'] ? '[동행] ${event['title']}' : event['title'];
+                final subtitle = event['destination'] ?? '';
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+                  ),
+                  child: ListTile(
+                    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
                     onTap: () async {
                       if (event['isCompanion']) {
                         Navigator.push(
@@ -164,7 +187,6 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                           ),
                         );
                       } else {
-                        // 개인 일정 클릭 시 조회 화면으로 이동
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -177,12 +199,9 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                         _loadSchedules();
                       }
                     },
-                    trailing: event['isCompanion']
-                        ? null
-                        : const SizedBox.shrink(), // 점 세개 메뉴 삭제
-                  );
-                }).toList();
-              }(),
+                  ),
+                );
+              },
             ),
           ),
         ],

@@ -150,7 +150,7 @@ class _CreateCompanionScreenState extends State<CreateCompanionScreen> {
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: '부가 설명',
-                    hintText: '예) 여성만 모집합니다 / 조용한 여행 선호해요',
+                    hintText: '예) 조용한 여행 선호해요 / mbti i이신 분들 환영합니다',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),

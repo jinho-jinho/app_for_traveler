@@ -86,13 +86,7 @@ class _CreatePersonalScheduleScreenState extends State<CreatePersonalScheduleScr
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
           ),
           child: Form(
             key: _formKey,
@@ -116,6 +110,7 @@ class _CreatePersonalScheduleScreenState extends State<CreatePersonalScheduleScr
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: '부가 설명',
+                    hintText: '예) 혼자만의 시간도 존중해요 / 저녁엔 근처 맛집 투어할 예정입니다',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
