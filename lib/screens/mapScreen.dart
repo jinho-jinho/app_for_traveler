@@ -1646,61 +1646,61 @@ void _showSearchDialog() {
               curve: Curves.easeInOut,
               height: hasResults ? 500 : 100,
               width: 500,
-              child: Column(
-                children: [
-  
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          autofocus: true,
-                          textInputAction: TextInputAction.search,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter Place Name',
-                            prefixIcon: Icon(Icons.search),
+              child: // ...중략...
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            autofocus: true,
+                            textInputAction: TextInputAction.search,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter Place Name',
+                              prefixIcon: Icon(Icons.search),
+                            ),
+                            onSubmitted: (value) {
+                              searchText = value;
+                              _handleSearch(value);
+                            },
+                            onChanged: (value) {
+                              searchText = value;
+                            },
                           ),
-                          onSubmitted: (value) {
-                            searchText = value;
-                            _handleSearch(value);
-                          },
-                          onChanged: (value) {
-                            searchText = value;
-                          },
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () => _handleSearch(searchText),
-                        child: const Text('Search'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () => _handleSearch(searchText),
+                          child: const Text('Search'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
 
-                  // 검색 후에만 아래 리스트 표시
-                  if (hasResults)
                     Expanded(
                       child: isSearching
                           ? const Center(child: CircularProgressIndicator())
-                          : searchResults.isEmpty
-                              ? const Center(child: Text('No search results found.'))
-                              : ListView.builder(
-                                  itemCount: searchResults.length,
-                                  itemBuilder: (context, index) {
-                                    final place = searchResults[index];
-                                    return _buildSearchResultCard(
-                                      place,
-                                      () async {
-                                        Navigator.pop(context);
-                                        await _moveToSelectedPlace(place.id);
+                          : searchText.isEmpty
+                              ? const SizedBox() // 검색 전에는 아무것도 안 보임
+                              : searchResults.isEmpty
+                                  ? const Center(child: Text('No search results found.'))
+                                  : ListView.builder(
+                                      itemCount: searchResults.length,
+                                      itemBuilder: (context, index) {
+                                        final place = searchResults[index];
+                                        return _buildSearchResultCard(
+                                          place,
+                                          () async {
+                                            Navigator.pop(context);
+                                            await _moveToSelectedPlace(place.id);
+                                          },
+                                        );
                                       },
-                                    );
-                                  },
-                                ),
-                    ),
-                ],
-              ),
-            ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),

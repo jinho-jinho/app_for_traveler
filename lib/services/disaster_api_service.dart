@@ -2,15 +2,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
-import 'package:geolocator/geolocator.dart';
+//import 'package:geolocator/geolocator.dart';
 
 class DisasterApiService {
   static const String _apiKey = '3THNN6FADIAT498J';
   static const String _baseUrl = 'https://www.safetydata.go.kr/V2/api/DSSP-IF-00247';
 
-  static const String _vworldApiKey = '216C8714-B83F-3003-8FA2-4E15F2020253';
-  static const String _vworldBaseUrl =
-      'http://api.vworld.kr/req/address?service=address&version=2.0&request=getaddress&format=json&type=both&zipcode=true&simple=false';
+  // static const String _vworldApiKey = '216C8714-B83F-3003-8FA2-4E15F2020253';
+  // static const String _vworldBaseUrl =
+  //     'http://api.vworld.kr/req/address?service=address&version=2.0&request=getaddress&format=json&type=both&zipcode=true&simple=false';
 
   static const String _translatorKey = 'F9a7jxLs7GpOJ7jk9DkXhUD0adwf4Yrc76DEH2unenQoBHWK1LHJJQQJ99BEACNns7RXJ3w3AAAbACOGzDSP';
   static const String _translatorRegion = 'koreacentral';
@@ -21,15 +21,15 @@ class DisasterApiService {
   static Future<List<Map<String, dynamic>>> fetchTodayDisasterMessages() async {
   try {
     //  현재 위치 가져오기
-    final Position pos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    // final Position pos = await Geolocator.getCurrentPosition(
+    //   desiredAccuracy: LocationAccuracy.high,
+    // );
 
     //  시도(지역명) 가져오기
-    final String regionName = await _getRegionName(pos.latitude, pos.longitude);
+    // final String regionName = await _getRegionName(pos.latitude, pos.longitude);
 
     //  해당 지역 재난문자 조회
-    final List<Map<String, dynamic>> messages = await _fetchByRegion(regionName);
+    final List<Map<String, dynamic>> messages = await _fetchByRegion();//regionName);
 
     if (messages.isEmpty) return [];
 
@@ -43,25 +43,25 @@ class DisasterApiService {
 }
 
 
-  /// 현재 위치 좌표 → 행정 시도 이름 (예: 서울특별시)
-  static Future<String> _getRegionName(double lat, double lon) async {
-    final dio = Dio();
-    final url = '$_vworldBaseUrl&key=$_vworldApiKey&point=$lon,$lat';
-    final res = await dio.get(url);
+  // /// 현재 위치 좌표 → 행정 시도 이름 (예: 서울특별시)
+  // static Future<String> _getRegionName(double lat, double lon) async {
+  //   final dio = Dio();
+  //   final url = '$_vworldBaseUrl&key=$_vworldApiKey&point=$lon,$lat';
+  //   final res = await dio.get(url);
 
-    if (res.statusCode == 200) {
-      final data = res.data;
-      final results = data['response']['result'];
-      if (results != null && results.isNotEmpty) {
-        final structure = results[0]['structure'];
-        return structure['level1']; // ex: 서울특별시
-      }
-    }
-    throw Exception('📍 시도 추출 실패');
-  }
+  //   if (res.statusCode == 200) {
+  //     final data = res.data;
+  //     final results = data['response']['result'];
+  //     if (results != null && results.isNotEmpty) {
+  //       final structure = results[0]['structure'];
+  //       return structure['level1']; // ex: 서울특별시
+  //     }
+  //   }
+  //   throw Exception('시도 추출 실패');
+  // }
 
   /// 시도 이름으로 재난문자 API 조회
-  static Future<List<Map<String, dynamic>>> _fetchByRegion(String regionName) async {
+  static Future<List<Map<String, dynamic>>> _fetchByRegion() async { //String regionName
     final now = DateTime.now();
     final date = '${now.year}${_twoDigits(now.month)}${_twoDigits(now.day)}';
 
@@ -71,7 +71,7 @@ class DisasterApiService {
         '&pageNo=1'
         '&returnType=json'
         '&crtDt=$date'
-        '&rgnNm=${Uri.encodeComponent(regionName)}');
+        );//'&rgnNm=${Uri.encodeComponent(regionName)}');
 
     final response = await http.get(uri);
 
@@ -100,14 +100,13 @@ class DisasterApiService {
     }
   }
 
-  /// Microsoft Translator API로 번역 수행 (ko → en)
+  // Microsoft Translator API로 번역 수행 (ko → en)
   static Future<List<Map<String, dynamic>>> _translateMessages(List<Map<String, dynamic>> messages) async {
     final dio = Dio();
 
-    // ✅ "Text" 필드는 대문자여야 하며, content-type 명확히
     final payload = messages
         .where((m) => m['msg'] != null && m['msg'].toString().trim().isNotEmpty)
-        .map((m) => {"Text": m['msg']}) // 대문자 T
+        .map((m) => {"Text": m['msg']})
         .toList();
 
     if (payload.isEmpty) return messages;
