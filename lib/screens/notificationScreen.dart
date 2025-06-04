@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
 import 'package:intl/intl.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   final List<Map<String, dynamic>> disasterAlerts;
   final List<Map<String, dynamic>> commentAlerts;
   final String currentUserId;
@@ -16,6 +16,11 @@ class NotificationScreen extends StatelessWidget {
     required this.currentUserNickname,
   });
 
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
   String _formatTimestamp(DateTime? time) {
     if (time == null) return '';
     final now = DateTime.now();
@@ -29,8 +34,8 @@ class NotificationScreen extends StatelessWidget {
 
   List<Map<String, dynamic>> _mergeAndSortNotifications() {
     final all = [
-      for (final e in disasterAlerts) {'type': 'disaster', ...e},
-      for (final e in commentAlerts) {'type': 'comment', ...e},
+      for (final e in widget.disasterAlerts) {'type': 'disaster', ...e},
+      for (final e in widget.commentAlerts) {'type': 'comment', ...e},
     ];
 
     all.sort((a, b) {
@@ -84,8 +89,8 @@ class NotificationScreen extends StatelessWidget {
                                 authorId: notif['postAuthorId'],
                                 authorNickname: notif['postAuthorNickname'],
                                 createdAt: notif['postCreatedAt'],
-                                currentUserId: currentUserId,
-                                currentUserNickname: currentUserNickname,
+                                currentUserId: widget.currentUserId,
+                                currentUserNickname: widget.currentUserNickname,
                               ),
                             ),
                           );
