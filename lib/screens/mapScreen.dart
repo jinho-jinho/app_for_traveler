@@ -1837,13 +1837,12 @@ void _showSearchDialog() {
 Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
   final firestore = FirebaseFirestore.instance;
 
-  final querySnapshot = await firestore
-      .collection('places')
-      .where('name', isGreaterThanOrEqualTo: keyword)
-      .where('name', isLessThan: keyword + '\uf8ff')
-      .get();
+  final querySnapshot = await firestore.collection('places').get(); // 전체 가져오기
 
-  return querySnapshot.docs.map((doc) {
+  return querySnapshot.docs
+      .where((doc) =>
+          (doc.data()['name'] as String?)?.toLowerCase().contains(keyword.toLowerCase()) ?? false)
+      .map((doc) {
     final data = doc.data();
 
     return Place(
@@ -1859,7 +1858,7 @@ Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
       isEncrypted: data['isEncrypted'] ?? false,
       isFree: data['isFree'] ?? true,
       isUserAdded: data['isUserAdded'] ?? false,
-      reviews: [], // 리뷰는 필요 시 따로
+      reviews: [],
       reports: [],
     );
   }).toList();
