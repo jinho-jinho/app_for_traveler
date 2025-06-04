@@ -262,18 +262,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _startDisasterCheckTimer() {
-    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    void _startDisasterCheckTimer() {
+    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
       try {
         final disasters = await DisasterApiService.fetchTodayDisasterMessages();
         for (final item in disasters) {
           final int sn = item['sn'];
-          final String msg = item['msg'];
+          final String translatedMsg = item['translated'] ?? item['msg']; // 🔁 번역 결과 우선 사용
 
           if (!_shownDisasterSNs.contains(sn)) {
             _shownDisasterSNs.add(sn);
             await _saveShownDisasterSNs();
-            if (mounted) _showDisasterAlert(msg);
+            if (mounted) _showDisasterAlert(translatedMsg); // ✅ 번역 메시지 출력
           }
         }
       } catch (e) {
@@ -286,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('📢 새로운 재난 문자'),
+        title: const Text('📢 New disaster message received'),
         content: Text(message),
         actions: [
           TextButton(
@@ -304,8 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final savedTimeMap = prefs.getString('sn_time_map');
     final timeMap = savedTimeMap != null ? jsonDecode(savedTimeMap) as Map<String, dynamic> : {};
 
+    // 재난문자 (영어 번역 포함) 가져오기
     final disasters = await DisasterApiService.fetchTodayDisasterMessages();
 
+    // timestamp 저장
     for (var d in disasters) {
       final snStr = d['sn'].toString();
       if (!timeMap.containsKey(snStr)) {
@@ -315,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await prefs.setString('sn_time_map', jsonEncode(timeMap));
 
+    // 이미 본 SN만 필터링하고 영어 번역된 메시지만 리턴
     return disasters
         .where((d) => savedSnList.contains(d['sn'].toString()))
         .map((d) {
@@ -322,12 +325,13 @@ class _HomeScreenState extends State<HomeScreen> {
           final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
           return {
             'sn': d['sn'],
-            'message': d['msg'],
+            'message': d['translated'] ?? d['msg'], // ✅ 영어 메시지만 사용
             'timestamp': t,
           };
         })
         .toList();
-  }
+    }
+
 
   Future<List<Map<String, dynamic>>> _loadCommentAlerts(String currentUserId) async {
     final firestore = FirebaseFirestore.instance;
