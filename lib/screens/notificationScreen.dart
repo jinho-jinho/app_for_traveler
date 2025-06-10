@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
 import 'package:intl/intl.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   final List<Map<String, dynamic>> disasterAlerts;
   final List<Map<String, dynamic>> commentAlerts;
   final String currentUserId;
@@ -16,21 +16,26 @@ class NotificationScreen extends StatelessWidget {
     required this.currentUserNickname,
   });
 
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
   String _formatTimestamp(DateTime? time) {
     if (time == null) return '';
     final now = DateTime.now();
     final diff = now.difference(time);
 
-    if (diff.inMinutes < 1) return '방금 전';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
-    if (diff.inHours < 24) return '${diff.inHours}시간 전';
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
+    if (diff.inHours < 24) return '${diff.inHours} hours ago';
     return DateFormat('yyyy-MM-dd HH:mm').format(time);
   }
 
   List<Map<String, dynamic>> _mergeAndSortNotifications() {
     final all = [
-      for (final e in disasterAlerts) {'type': 'disaster', ...e},
-      for (final e in commentAlerts) {'type': 'comment', ...e},
+      for (final e in widget.disasterAlerts) {'type': 'disaster', ...e},
+      for (final e in widget.commentAlerts) {'type': 'comment', ...e},
     ];
 
     all.sort((a, b) {
@@ -47,9 +52,9 @@ class NotificationScreen extends StatelessWidget {
     final allNotifications = _mergeAndSortNotifications();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('알림')),
+      appBar: AppBar(title: const Text('Notifications')),
       body: allNotifications.isEmpty
-          ? const Center(child: Text('알림이 없습니다.'))
+          ? const Center(child: Text('No notifications available.'))
           : ListView.builder(
               itemCount: allNotifications.length,
               itemBuilder: (context, index) {
@@ -64,8 +69,8 @@ class NotificationScreen extends StatelessWidget {
                   ),
                   title: Text(
                     isDisaster
-                        ? (notif['message'] ?? '알 수 없는 재난 메시지')
-                        : '${notif['nickname'] ?? '누군가'}님이 댓글을 남겼습니다',
+                        ? (notif['message'] ?? 'Unknown disaster message')
+                        : '${notif['nickname'] ?? 'Someone'} commented on your post',
                   ),
                   subtitle: Text(
                     _formatTimestamp(timestamp),
@@ -84,8 +89,8 @@ class NotificationScreen extends StatelessWidget {
                                 authorId: notif['postAuthorId'],
                                 authorNickname: notif['postAuthorNickname'],
                                 createdAt: notif['postCreatedAt'],
-                                currentUserId: currentUserId,
-                                currentUserNickname: currentUserNickname,
+                                currentUserId: widget.currentUserId,
+                                currentUserNickname: widget.currentUserNickname,
                               ),
                             ),
                           );
