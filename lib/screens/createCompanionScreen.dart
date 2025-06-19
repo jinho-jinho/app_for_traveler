@@ -203,7 +203,7 @@ class _CreateCompanionScreenState extends State<CreateCompanionScreen> {
                 DropdownButtonFormField<String>(
                   value: _genderCondition,
                   decoration: const InputDecoration(labelText: '성별 조건', border: OutlineInputBorder(), isDense: true),
-                  items: ['무관', '남성만', '여성만'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(),
+                  items: ['무관', '남성', '여성'].map((label) => DropdownMenuItem(value: label, child: Text(label))).toList(),
                   onChanged: (value) {
                     if (value != null) setState(() => _genderCondition = value);
                   },

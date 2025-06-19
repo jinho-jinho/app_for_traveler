@@ -51,48 +51,48 @@ class NotificationScreen extends StatelessWidget {
       body: allNotifications.isEmpty
           ? const Center(child: Text('No notifications available.'))
           : ListView.builder(
-              itemCount: allNotifications.length,
-              itemBuilder: (context, index) {
-                final notif = allNotifications[index];
-                final isDisaster = notif['type'] == 'disaster';
-                final timestamp = notif['timestamp'] as DateTime?;
+        itemCount: allNotifications.length,
+        itemBuilder: (context, index) {
+          final notif = allNotifications[index];
+          final isDisaster = notif['type'] == 'disaster';
+          final timestamp = notif['timestamp'] as DateTime?;
 
-                return ListTile(
-                  leading: Icon(
-                    isDisaster ? Icons.warning : Icons.comment,
-                    color: isDisaster ? Colors.red : Colors.blue,
-                  ),
-                  title: Text(
-                    isDisaster
-                        ? (notif['message'] ?? 'Unknown disaster message')
-                        : '${notif['nickname'] ?? 'Someone'} commented on your post',
-                  ),
-                  subtitle: Text(
-                    _formatTimestamp(timestamp),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  onTap: isDisaster
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostDetailScreen(
-                                postId: notif['postId'],
-                                title: notif['postTitle'],
-                                content: notif['postContent'],
-                                authorId: notif['postAuthorId'],
-                                authorNickname: notif['postAuthorNickname'],
-                                createdAt: notif['postCreatedAt'],
-                                currentUserId: currentUserId,
-                                currentUserNickname: currentUserNickname,
-                              ),
-                            ),
-                          );
-                        },
-                );
-              },
+          return ListTile(
+            leading: Icon(
+              isDisaster ? Icons.warning : Icons.comment,
+              color: isDisaster ? Colors.red : Colors.blue,
             ),
+            title: Text(
+              isDisaster
+                  ? (notif['message'] ?? 'Unknown disaster message')
+                  : '${notif['nickname'] ?? 'Someone'} commented on your post',
+            ),
+            subtitle: Text(
+              _formatTimestamp(timestamp),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            onTap: isDisaster
+                ? null
+                : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PostDetailScreen(
+                    postId: notif['postId'],
+                    title: notif['postTitle'],
+                    content: notif['postContent'],
+                    authorId: notif['postAuthorId'],
+                    authorNickname: notif['postAuthorNickname'],
+                    createdAt: notif['postCreatedAt'],
+                    currentUserId: currentUserId,
+                    currentUserNickname: currentUserNickname,
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
