@@ -15,19 +15,21 @@ import 'dart:typed_data'; // Uint8List를 위해 추가
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:battery_plus/battery_plus.dart'; //
-import 'package:connectivity_plus/connectivity_plus.dart'; //
-import 'package:app_for_traveler/services/recommendation_service.dart';
+
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
 class MapScreen extends StatefulWidget {
   final String currentUserId; // 현재 사용자 ID
   final String? selectedPlaceId; // 선택된 장소 ID
+  final String? searchKeyword;
+  final String? selectedCategory;
 
   const MapScreen({
     super.key,
     required this.currentUserId,
     this.selectedPlaceId,
+    this.searchKeyword,
+    this.selectedCategory
   });
 
   @override
@@ -62,11 +64,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _isMapVisible = false; // 지도 표시 상태
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // RecommendationService 인스턴스 추가
-  final RecommendationService _recommendationService = RecommendationService(); //
-  String _currentRecommendationMessage = "오늘도 즐거운 하루 되세요!"; // 초기 추천 메시지
-
 
   // 독립 카테고리로 변경 (관광 명소 카테고리 제거, 카페/음식점/랜드마크 추가)
   final Map<String, bool> _categoryEnabled = {
@@ -109,9 +106,13 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.searchKeyword != null) {
+      // 예를 들어, searchKeyword를 사용하여 지도 검색 API 호출 또는 마커 표시 로직
+      print('MapScreen received search keyword: ${widget.searchKeyword}');
+      // 여기에 지도 검색을 실행하는 로직을 추가합니다.
+    }
     _isMapVisible = true;
     _initializeData();
-    _fetchAndApplyRecommendation(); // 앱 시작 시 추천 및 검색 로직 실행
   }
 
   // didUpdateWidget: 위젯 업데이트 시 선택된 장소 처리
@@ -138,52 +139,6 @@ class _MapScreenState extends State<MapScreen> {
     await _checkLocationPermission();
     await _fetchCurrentUserNickname();
     await _fetchData();
-  }
-
-  // _fetchAndApplyRecommendation: 추천 서비스를 호출하고 지도 검색에 연결하는 함수
-  Future<void> _fetchAndApplyRecommendation() async {
-    // 실제 배터리, 연결, 날씨 데이터를 가져오는 로직 (비동기)
-    // 이 부분은 실제 앱의 데이터 소스에 따라 구현해야 합니다.
-    // 예시: BatteryPlus와 ConnectivityPlus를 사용하여 실제 값 가져오기
-    final Battery battery = Battery(); //
-    final Connectivity connectivity = Connectivity(); //
-
-    try {
-      final int batteryLevel = await battery.batteryLevel; //
-      final BatteryState batteryState = await battery.batteryState; //
-      final List<ConnectivityResult> connectivityResults = await connectivity.checkConnectivity();
-      final ConnectivityResult connectivityResult = connectivityResults.isNotEmpty
-          ? connectivityResults.first // 첫 번째 연결 결과 사용 (가장 대표적인 연결)
-          : ConnectivityResult.none; // 연결이 없는 경우
-      // 날씨 데이터 가져오기 (이전 코드에서 사용하던 weatherData 로직을 여기에 통합)
-      // Map<String, dynamic>? weatherData = await _fetchWeatherData(); // 필요하다면 이 함수를 구현하고 호출
-
-      final RecommendationResult result = _recommendationService.getRecommendation( //
-        weatherData: null, // 실제 날씨 데이터로 대체
-        batteryLevel: batteryLevel, //
-        batteryState: batteryState, //
-        connectivityResult: connectivityResult, //
-      );
-
-      if (mounted) {
-        setState(() {
-          _currentRecommendationMessage = result.recommendationText; //
-        });
-      }
-
-      // 검색 키워드가 있다면 지도 검색 실행
-      if (result.searchKeyword != null) { //
-        await _performMapSearch(result.searchKeyword!); //
-        // 검색 후, 특정 지점으로 이동했으므로, 다시 로딩 메시지를 표시하지 않도록 상태 조정 가능
-      }
-    } catch (e) {
-      print("추천 정보 및 검색 적용 실패: $e");
-      if (mounted) {
-        setState(() {
-          _currentRecommendationMessage = "추천 정보를 가져오는 데 실패했습니다.";
-        });
-      }
-    }
   }
 
 
@@ -1919,25 +1874,7 @@ class _MapScreenState extends State<MapScreen> {
                   Text(_syncProgressMessage),
                 ],
               ),
-            ),
-          // 추천 메시지를 표시할 위젯 추가
-          Positioned(
-            top: _isMapVisible ? 60 : 10, // 카테고리 필터 아래에 위치
-            left: 10,
-            right: 10,
-            child: Card(
-              elevation: 4,
-              color: Colors.white.withOpacity(0.9),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  _currentRecommendationMessage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-                ),
-              ),
-            ),
-          ),
+            )
         ],
       ),
       floatingActionButton: FloatingActionButton(

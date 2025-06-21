@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'companionDetailScreen.dart';
 import 'createCompanionScreen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class CompanionListScreen extends StatefulWidget {
   final String currentUserId;
@@ -18,15 +19,17 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.grey[100],
-        title: const Text('동행 찾기', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(appLocalizations.findCompanionTitle, style: const TextStyle(fontWeight: FontWeight.bold)), // 다국어 적용
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: '동행 등록',
+            tooltip: appLocalizations.registerCompanionTooltip, // 다국어 적용
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -47,16 +50,16 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                 const Icon(Icons.filter_alt_outlined, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SwitchListTile(
-                    title: const Text('모집 중인 동행만 보기'),
-                    value: _showOnlyOpen,
-                    activeColor: Colors.black, // 스위치가 켜졌을 때 thumb 색상
-                    inactiveThumbColor: Colors.grey, // 꺼졌을 때 thumb 색상
-                    inactiveTrackColor: Colors.grey.shade300, // 꺼졌을 때 트랙 색상
-                    onChanged: (val) {
-                      setState(() => _showOnlyOpen = val);
-                    },
-                  )
+                    child: SwitchListTile(
+                      title: Text(appLocalizations.showOnlyOpenCompanions), // 다국어 적용
+                      value: _showOnlyOpen,
+                      activeColor: Colors.black,
+                      inactiveThumbColor: Colors.grey,
+                      inactiveTrackColor: Colors.grey.shade300,
+                      onChanged: (val) {
+                        setState(() => _showOnlyOpen = val);
+                      },
+                    )
                 ),
               ],
             ),
@@ -76,8 +79,8 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                   final d = doc.data() as Map<String, dynamic>;
                   return {
                     'id': doc.id,
-                    'title': d['title'] ?? '제목 없음',
-                    'destination': d['destination'] ?? '여행지 미정',
+                    'title': d['title'] ?? appLocalizations.noTitle, // 다국어 적용
+                    'destination': d['destination'] ?? appLocalizations.destinationUndecided, // 다국어 적용
                     'content': d['content'] ?? '',
                     'currentCount': d['currentCount'] ?? 0,
                     'maxCount': d['maxCount'] ?? 0,
@@ -88,7 +91,7 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                 }).where((item) => !_showOnlyOpen || !(item['isClosed'] ?? true)).toList();
 
                 if (companions.isEmpty) {
-                  return const Center(child: Text('현재 등록된 동행이 없습니다.'));
+                  return Center(child: Text(appLocalizations.noCompanionsRegistered)); // 다국어 적용
                 }
 
                 return ListView.builder(
@@ -143,7 +146,7 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Text(
-                                    c['isClosed'] ? '모집 완료' : '모집 중',
+                                    c['isClosed'] ? appLocalizations.recruitmentComplete : appLocalizations.recruiting, // 다국어 적용
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -155,7 +158,7 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '📍 ${c['destination']}',
+                              '📍 ${c['destination']}', // 📍는 이모지이므로 그대로 유지
                               style: const TextStyle(color: Colors.black87),
                             ),
                             const SizedBox(height: 6),
@@ -170,11 +173,11 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '🗓 ${DateFormat('MM/dd').format(c['startDate'])} ~ ${DateFormat('MM/dd').format(c['endDate'])}',
+                                  '🗓 ${DateFormat('MM/dd').format(c['startDate'])} ~ ${DateFormat('MM/dd').format(c['endDate'])}', // 🗓 이모지 유지
                                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                                 ),
                                 Text(
-                                  '👥 ${c['currentCount']}/${c['maxCount']}명',
+                                  '👥 ${c['currentCount']}/${c['maxCount']}${appLocalizations.personUnit}', // '명' 다국어 적용
                                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                                 ),
                               ],

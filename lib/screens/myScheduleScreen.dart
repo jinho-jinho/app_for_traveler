@@ -5,8 +5,8 @@ import 'package:intl/intl.dart';
 import 'companionDetailScreen.dart';
 import 'createPersonalScheduleScreen.dart';
 import 'editPersonalScheduleScreen.dart';
-// 개인 일정 상세 조회 스크린 임포트 필요
 import 'personalScheduleDetailScreen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class MyScheduleScreen extends StatefulWidget {
   final String currentUserId;
@@ -31,6 +31,14 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
 
   Future<void> _loadSchedules() async {
     final events = <DateTime, List<Map<String, dynamic>>>{};
+
+    // ──────────────────────────────────────────────────────────────────
+    // context가 필요하므로 build 메소드 밖에서는 AppLocalizations.of(context)를 바로 쓸 수 없습니다.
+    // 하지만 이 메소드에서 AppLocalizations를 사용하는 부분은 '제목 없음'인데,
+    // 이는 이미 noTitle 키로 충분히 대체 가능하며, Firestore에서 데이터를 가져오는 부분이므로
+    // 직접 appLocalizations를 참조할 필요가 적습니다.
+    // '제목 없음'은 나중에 UI에 표시될 때 AppLocalizations.noTitle로 변환될 수 있습니다.
+    // ──────────────────────────────────────────────────────────────────
 
     // 개인 일정 불러오기
     final personalSnap = await FirebaseFirestore.instance
@@ -70,7 +78,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
       final companionDoc =
       await FirebaseFirestore.instance.collection('companions').doc(companionId).get();
       final companionData = companionDoc.data();
-      final title = companionData?['title'] ?? '제목 없음';
+      final title = companionData?['title'] ?? '제목 없음'; // 이 부분은 UI에 표시될 때 다국어 처리
 
       for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
         final key = DateTime(d.year, d.month, d.day);
@@ -95,12 +103,16 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+
     final todayEvents = _getEventsForDay(_selectedDay!);
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('나의 여행 스케줄', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        title: Text(appLocalizations.myTravelScheduleTitle, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)), // 다국어 적용
         backgroundColor: Colors.grey[100],
         elevation: 0,
         centerTitle: true,
@@ -108,6 +120,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black87),
+            tooltip: appLocalizations.addPersonalScheduleTooltip, // 새로운 키 추가
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -149,7 +162,7 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: todayEvents.isEmpty
-                ? const Center(child: Text('해당 날짜에 등록된 일정이 없습니다.'))
+                ? Center(child: Text(appLocalizations.noSchedulesForDate)) // 다국어 적용
                 : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: todayEvents.length,
@@ -162,7 +175,9 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
                   });
 
                 final event = sortedEvents[index];
-                final title = event['isCompanion'] ? '[동행] ${event['title']}' : event['title'];
+                // '제목 없음' 대신 appLocalizations.noTitle 사용
+                final actualTitle = event['title'] ?? appLocalizations.noTitle;
+                final title = event['isCompanion'] ? appLocalizations.companionSchedulePrefix(actualTitle) : actualTitle; // 다국어 적용 및 동적 문자열 처리
                 final subtitle = event['destination'] ?? '';
 
                 return Container(
