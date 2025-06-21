@@ -78,6 +78,12 @@ class _MapScreenState extends State<MapScreen> {
     '음식점': true, // 새로운 카테고리 추가
     '랜드마크': true, // 새로운 카테고리 추가
   };
+  final Map<String, List<String>> _categoryHierarchy = {
+    '응급&안전': ['병원', '약국', '경찰서'],
+    '금융&환전': ['ATM', '은행', '환전소'],
+    '편의 시설': ['공중 화장실', '물품 보관함', '휴대폰 충전소', '공공 와이파이'],
+    '관광': ['카페', '음식점', '랜드마크'],
+  };
 
   BitmapDescriptor? hospitalIcon;
   BitmapDescriptor? pharmacyIcon;
@@ -1646,61 +1652,61 @@ void _showSearchDialog() {
               curve: Curves.easeInOut,
               height: hasResults ? 500 : 100,
               width: 500,
-              child: // ...중략...
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            autofocus: true,
-                            textInputAction: TextInputAction.search,
-                            decoration: const InputDecoration(
-                              hintText: 'Enter Place Name',
-                              prefixIcon: Icon(Icons.search),
-                            ),
-                            onSubmitted: (value) {
-                              searchText = value;
-                              _handleSearch(value);
-                            },
-                            onChanged: (value) {
-                              searchText = value;
-                            },
+              child: Column(
+                children: [
+  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          autofocus: true,
+                          textInputAction: TextInputAction.search,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter Place Name',
+                            prefixIcon: Icon(Icons.search),
                           ),
+                          onSubmitted: (value) {
+                            searchText = value;
+                            _handleSearch(value);
+                          },
+                          onChanged: (value) {
+                            searchText = value;
+                          },
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => _handleSearch(searchText),
-                          child: const Text('Search'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => _handleSearch(searchText),
+                        child: const Text('Search'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
 
+                  // 검색 후에만 아래 리스트 표시
+                  if (hasResults)
                     Expanded(
                       child: isSearching
                           ? const Center(child: CircularProgressIndicator())
-                          : searchText.isEmpty
-                              ? const SizedBox() // 검색 전에는 아무것도 안 보임
-                              : searchResults.isEmpty
-                                  ? const Center(child: Text('No search results found.'))
-                                  : ListView.builder(
-                                      itemCount: searchResults.length,
-                                      itemBuilder: (context, index) {
-                                        final place = searchResults[index];
-                                        return _buildSearchResultCard(
-                                          place,
-                                          () async {
-                                            Navigator.pop(context);
-                                            await _moveToSelectedPlace(place.id);
-                                          },
-                                        );
+                          : searchResults.isEmpty
+                              ? const Center(child: Text('No search results found.'))
+                              : ListView.builder(
+                                  itemCount: searchResults.length,
+                                  itemBuilder: (context, index) {
+                                    final place = searchResults[index];
+                                    return _buildSearchResultCard(
+                                      place,
+                                      () async {
+                                        Navigator.pop(context);
+                                        await _moveToSelectedPlace(place.id);
                                       },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                    );
+                                  },
+                                ),
+                    ),
+                ],
+              ),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -1749,100 +1755,146 @@ void _showSearchDialog() {
   // build: 지도, 카테고리 필터, 로딩 UI 렌더링
   // 역할: 지도 화면 및 UI 구성
   // 분류: 디자인
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('지도'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await _fetchData(forceSync: true);
-            },
-            tooltip: '데이터 동기화',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          _isMapVisible
-              ? GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: const CameraPosition(
-              target: initialPosition,
-              zoom: 12,
-            ),
-            markers: _createMarkers(),
-            myLocationEnabled: _locationPermissionGranted,
-            myLocationButtonEnabled: true,
-          )
-              : const Center(child: Text('지도 로드 대기 중...')),
-              Positioned(
-                bottom: 16, 
-                left: 16,   
-                child: FloatingActionButton(
-                  heroTag: 'search_button', 
-                  onPressed: _showSearchDialog,
-                  child: const Icon(Icons.search),
-                  tooltip: '장소 검색',
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('지도'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () async {
+            await _fetchData(forceSync: true);
+          },
+          tooltip: '데이터 동기화',
+        ),
+      ],
+    ),
+    body: Stack(
+      children: [
+        _isMapVisible
+            ? GoogleMap(
+                onMapCreated: _onMapCreated,
+                initialCameraPosition: const CameraPosition(
+                  target: initialPosition,
+                  zoom: 12,
                 ),
-              ),
-
-          Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _categoryEnabled.keys.map((category) {
+                markers: _createMarkers(),
+                myLocationEnabled: _locationPermissionGranted,
+                myLocationButtonEnabled: true,
+              )
+            : const Center(child: Text('지도 로드 대기 중...')),
+        Positioned(
+          top: 10,
+          left: 10,
+          right: 10,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // 상위 카테고리 버튼들
+                ..._categoryHierarchy.keys.map((mainCategory) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: ChoiceChip(
-                      label: Text(category),
-                      selected: _categoryEnabled[category]!,
-                      onSelected: (selected) {
+                    child: PopupMenuButton<String>(
+                      offset: const Offset(0, 40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      itemBuilder: (context) => _categoryHierarchy[mainCategory]!.map((subCategory) {
+                        return PopupMenuItem<String>(
+                          value: subCategory,
+                          child: Row(
+                            children: [
+                              Icon(
+                                _categoryEnabled[subCategory] ?? false
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: _categoryEnabled[subCategory] ?? false
+                                    ? Colors.blue
+                                    : Colors.grey,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(subCategory),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onSelected: (subCategory) {
                         setState(() {
-                          _categoryEnabled[category] = selected;
+                          _categoryEnabled[subCategory] = !(_categoryEnabled[subCategory] ?? false);
                         });
                       },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(mainCategory),
+                      ),
                     ),
                   );
                 }).toList(),
-              ),
+              ],
             ),
           ),
-          if (_isLoading)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 10),
-                  Text(_syncProgressMessage),
-                ],
+        ),
+        Positioned(
+          bottom: 16,
+          left: 16,
+          child: Column(
+            children: [
+              FloatingActionButton(
+                heroTag: 'search_button',
+                onPressed: _showSearchDialog,
+                child: const Icon(Icons.search),
+                tooltip: '장소 검색',
               ),
+              const SizedBox(height: 10),
+              FloatingActionButton(
+                heroTag: 'add_place_button',
+                onPressed: _showAddPlaceDialog,
+                child: const Icon(Icons.add),
+                tooltip: '장소 추가',
+              ),
+            ],
+          ),
+        ),
+        if (_isLoading)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 10),
+                Text(_syncProgressMessage),
+              ],
             ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddPlaceDialog,
-        child: const Icon(Icons.add),
-        tooltip: '장소 추가',
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
+}
 }
 Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
   final firestore = FirebaseFirestore.instance;
 
-  final querySnapshot = await firestore.collection('places').get(); // 전체 가져오기
+  final querySnapshot = await firestore
+      .collection('places')
+      .where('name', isGreaterThanOrEqualTo: keyword)
+      .where('name', isLessThan: keyword + '\uf8ff')
+      .get();
 
-  return querySnapshot.docs
-      .where((doc) =>
-          (doc.data()['name'] as String?)?.toLowerCase().contains(keyword.toLowerCase()) ?? false)
-      .map((doc) {
+  return querySnapshot.docs.map((doc) {
     final data = doc.data();
 
     return Place(
@@ -1858,7 +1910,7 @@ Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
       isEncrypted: data['isEncrypted'] ?? false,
       isFree: data['isFree'] ?? true,
       isUserAdded: data['isUserAdded'] ?? false,
-      reviews: [],
+      reviews: [], // 리뷰는 필요 시 따로
       reports: [],
     );
   }).toList();
