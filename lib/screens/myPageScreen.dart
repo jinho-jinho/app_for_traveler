@@ -121,35 +121,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
       MaterialPageRoute(
         builder: (_) =>
             Scaffold(
-              appBar: AppBar(title: Text(title)),
-              body: ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
-                  return ListTile(
-                    title: Text(data['title'] ?? '제목 없음'),
-                    subtitle: Text(data['content'] ?? ''),
-                    onTap: () =>
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                PostDetailScreen(
-                                  postId: docs[index].id,
-                                  title: data['title'],
-                                  content: data['content'],
-                                  authorId: data['authorId'],
-                                  authorNickname: data['authorNickname'],
-                                  createdAt: (data['createdAt'] as Timestamp)
-                                      .toDate(),
-                                  currentUserId: widget.currentUserId,
-                                  currentUserNickname: _nickname,
-                                ),
+                backgroundColor: Colors.grey[100],
+              appBar: AppBar(title: Text(title), backgroundColor: Colors.grey[100],),
+                body: ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    return _buildInfoCard(
+                      title: data['title'] ?? '제목 없음',
+                      subtitle: data['content'] ?? '',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PostDetailScreen(
+                            postId: docs[index].id,
+                            title: data['title'],
+                            content: data['content'],
+                            authorId: data['authorId'],
+                            authorNickname: data['authorNickname'],
+                            createdAt: (data['createdAt'] as Timestamp).toDate(),
+                            currentUserId: widget.currentUserId,
+                            currentUserNickname: _nickname,
                           ),
                         ),
-                  );
-                },
-              ),
+                      ),
+                    );
+                  },
+                )
             ),
       ),
     );
@@ -161,26 +159,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
       MaterialPageRoute(
         builder: (_) =>
             Scaffold(
-              appBar: AppBar(title: const Text('즐겨찾기한 장소')),
-              body: ListView(
-                children: _favorites.map((placeId) {
-                  return FutureBuilder<DocumentSnapshot>(
-                    future: _firestore.collection('places').doc(placeId).get(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting)
-                        return const ListTile(title: Text('로딩 중...'));
-                      if (!snapshot.hasData || !snapshot.data!.exists)
-                        return ListTile(title: Text(placeId));
-                      final data = snapshot.data!.data() as Map<String,
-                          dynamic>;
-                      return ListTile(
-                        title: Text(data['name'] ?? placeId),
-                        onTap: () => widget.onPlaceSelected(placeId),
-                      );
-                    },
-                  );
-                }).toList(),
-              ),
+                backgroundColor: Colors.grey[100],
+              appBar: AppBar(title: const Text('즐겨찾기한 장소'), backgroundColor: Colors.grey[100],),
+                body: ListView(
+                  children: _favorites.map((placeId) {
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: _firestore.collection('places').doc(placeId).get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting)
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        if (!snapshot.hasData || !snapshot.data!.exists)
+                          return _buildInfoCard(title: placeId);
+
+                        final data = snapshot.data!.data() as Map<String, dynamic>;
+                        return _buildInfoCard(
+                          title: data['name'] ?? placeId,
+                          subtitle: data['address'] ?? '',
+                          onTap: () => widget.onPlaceSelected(placeId),
+                        );
+                      },
+                    );
+                  }).toList(),
+                )
             ),
       ),
     );
@@ -381,6 +384,43 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         ),
         trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: onTap,
+      ),
+    );
+  }
+
+
+  Widget _buildInfoCard({
+    required String title,
+    String? subtitle,
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        subtitle: subtitle != null && subtitle.isNotEmpty
+            ? Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+        )
+            : null,
+        trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );
