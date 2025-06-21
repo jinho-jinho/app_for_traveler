@@ -433,7 +433,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () {
+            onPressed: () async {
+              await _loadAllAlerts();
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
