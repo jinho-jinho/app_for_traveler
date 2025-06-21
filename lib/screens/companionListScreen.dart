@@ -47,16 +47,16 @@ class _CompanionListScreenState extends State<CompanionListScreen> {
                 const Icon(Icons.filter_alt_outlined, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SwitchListTile(
-                    title: const Text('모집 중인 동행만 보기'),
-                    value: _showOnlyOpen,
-                    activeColor: Colors.black, // 스위치가 켜졌을 때 thumb 색상
-                    inactiveThumbColor: Colors.grey, // 꺼졌을 때 thumb 색상
-                    inactiveTrackColor: Colors.grey.shade300, // 꺼졌을 때 트랙 색상
-                    onChanged: (val) {
-                      setState(() => _showOnlyOpen = val);
-                    },
-                  )
+                    child: SwitchListTile(
+                      title: const Text('모집 중인 동행만 보기'),
+                      value: _showOnlyOpen,
+                      activeColor: Colors.black, // 스위치가 켜졌을 때 thumb 색상
+                      inactiveThumbColor: Colors.grey, // 꺼졌을 때 thumb 색상
+                      inactiveTrackColor: Colors.grey.shade300, // 꺼졌을 때 트랙 색상
+                      onChanged: (val) {
+                        setState(() => _showOnlyOpen = val);
+                      },
+                    )
                 ),
               ],
             ),

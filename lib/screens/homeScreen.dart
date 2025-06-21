@@ -10,12 +10,11 @@ import 'package:app_for_traveler/services/disaster_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'companionListScreen.dart';
 import 'notificationScreen.dart';
 import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
-import '../companionCard.dart';
-import 'companionListScreen.dart';
 import 'weatherScreen.dart';
+import 'package:app_for_traveler/screens/companionListScreen.dart';
+
 
 
 class CompanionCard extends StatelessWidget {
