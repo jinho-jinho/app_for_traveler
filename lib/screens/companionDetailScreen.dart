@@ -47,6 +47,8 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       }
 
       final data = doc.data()!;
+
+
       final participantDoc = await _firestore
           .collection('companions')
           .doc(widget.companionId)
