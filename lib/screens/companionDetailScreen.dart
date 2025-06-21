@@ -47,6 +47,8 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       }
 
       final data = doc.data()!;
+
+
       final participantDoc = await _firestore
           .collection('companions')
           .doc(widget.companionId)
@@ -116,8 +118,38 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
 
   Future<void> _requestJoin() async {
     final userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-    final nickname = userDoc.data()?['nickname'] ?? '익명';
+    final userData = userDoc.data();
 
+    if (userData == null) return;
+
+    final nickname = userData['nickname'] ?? '익명';
+    final userGender = userData['gender'];
+    final userAge = userData['age'];
+
+    final genderCondition = _companionData?['genderCondition'];
+    final ageCondition = _companionData?['ageCondition'];
+
+    // ✅ 성별 조건 검사
+    if (genderCondition != null && genderCondition != '무관' && genderCondition != userGender) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('성별 조건이 맞지 않습니다.')),
+      );
+      return;
+    }
+
+    // ✅ 나이 조건 검사
+    if (ageCondition is Map && ageCondition['type'] == '범위') {
+      final min = ageCondition['min'];
+      final max = ageCondition['max'];
+      if (userAge == null || userAge < min || userAge > max) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('나이 조건이 맞지 않습니다.')),
+        );
+        return;
+      }
+    }
+
+    // 🔥 조건을 모두 통과한 경우만 신청 가능
     await _firestore
         .collection('companions')
         .doc(widget.companionId)
@@ -129,7 +161,6 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       'requestedAt': FieldValue.serverTimestamp(),
     });
 
-    // 🔥 신청 후 즉시 UI에 반영되도록!
     setState(() {
       _hasRequested = true;
     });
@@ -138,6 +169,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       const SnackBar(content: Text('참여 신청 완료')),
     );
   }
+
 
 
   Future<void> _cancelRequest() async {
@@ -260,9 +292,24 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
         .collection('participants')
         .get();
 
-    final participants = snapshot.docs.map((doc) => doc.data()).toList();
-    setState(() => _participantList = participants);
+    List<Map<String, dynamic>> participants = [];
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      // gender 정보가 없으면 users에서 보충
+      if (data['gender'] == null) {
+        final userSnapshot = await _firestore.collection('users').doc(data['userId']).get();
+        final userGender = userSnapshot.data()?['gender'];
+        data['gender'] = userGender ?? '미입력';
+      }
+      participants.add(data);
+    }
+
+    setState(() {
+      _participantList = participants;
+    });
   }
+
 
   Future<void> _acceptRequest(String userId, String userName) async {
     final docRef = _firestore.collection('companions').doc(widget.companionId);
@@ -275,11 +322,15 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
 
       if (currentCount >= maxCount) throw Exception('정원이 가득 찼습니다.');
 
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final userGender = userDoc.data()?['gender'] ?? '미입력';
+
       tx.set(docRef.collection('participants').doc(userId), {
         'userId': userId,
         'userName': userName,
         'joinedAt': FieldValue.serverTimestamp(),
         'isLeader': false,
+        'gender': userGender,
       });
 
       tx.update(docRef, {
@@ -399,10 +450,12 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
             const SizedBox(height: 24),
 
             // ✅ 신청자 및 참여자 목록은 파티장일 경우에만
-            // if (_isLeader) _buildRequestsAndParticipants(),
+            if (_isLeader) _buildRequestsAndParticipants(),
+            if (_isLeader) const SizedBox(height: 24), // 여백 추가
             if (_isParticipating || _isLeader) _buildParticipantsOnlySection(),
 
             const SizedBox(height: 24),
+
 
             // ✅ 댓글 섹션은 가장 아래에 위치
             _buildCommentSection(),
@@ -474,6 +527,20 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final currentCount = data['currentCount'] ?? 0;
         final maxCount = data['maxCount'] ?? 0;
+
+        final List<Map<String, dynamic>> allParticipants = List<Map<String, dynamic>>.from(_participantList);
+
+        // 성비 계산: 파티장 포함
+        final int maleCount = allParticipants
+            .where((p) => (p['gender']?.toString().contains('남') ?? false))
+            .length;
+
+        final int femaleCount = allParticipants
+            .where((p) => (p['gender']?.toString().contains('여') ?? false))
+            .length;
+
+
+
 
 
         final ageConditionRaw = data['ageCondition'];
@@ -573,10 +640,11 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
 
 
 
-              // 모집 조건 표시
-              Text('✅ 참여 조건: '
-                  '${data['genderCondition'] ?? '무관'} / $ageText',
+              Text('✅ 참여 조건: ${data['genderCondition'] ?? '무관'} / $ageText',
                 style: const TextStyle(color: Colors.black87),
+              ),
+              Text('👩🏻👨🏻 성비 현황: 남 $maleCount명 / 여 $femaleCount명',
+                style: const TextStyle(color: Colors.black54),
               ),
 
 
@@ -750,96 +818,45 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
     );
   }
 
-  // Widget _buildRequestsAndParticipants() {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       const SizedBox(height: 24),
-  //       Container(
-  //         padding: const EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: Colors.white,
-  //           borderRadius: BorderRadius.circular(12),
-  //           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-  //         ),
-  //         child: Column(
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: [
-  //             const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-  //             const SizedBox(height: 8),
-  //             if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
-  //             ..._requests.map((user) => ListTile(
-  //               title: Text(user['userName'] ?? '알 수 없음'),
-  //               subtitle: Text('ID: ${user['id']}'),
-  //               trailing: Row(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   IconButton(
-  //                     icon: const Icon(Icons.check, color: Colors.green),
-  //                     onPressed: () => _acceptRequest(user['id'], user['userName']),
-  //                   ),
-  //                   IconButton(
-  //                     icon: const Icon(Icons.clear, color: Colors.red),
-  //                     onPressed: () => _rejectRequest(user['id']),
-  //                   ),
-  //                 ],
-  //               ),
-  //             )),
-  //           ],
-  //         ),
-  //       ),
-  //       const SizedBox(height: 24),
-  //       Container(
-  //         padding: const EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: Colors.white,
-  //           borderRadius: BorderRadius.circular(12),
-  //           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-  //         ),
-  //         child: Column(
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: [
-  //             const Text('참여자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-  //             const SizedBox(height: 8),
-  //             ..._participantList.map((user) => ListTile(
-  //               title: Text(user['userName']), // 닉네임만 표시
-  //               onTap: () async {
-  //                 final userDoc = await _firestore.collection('users').doc(user['userId']).get();
-  //                 final userInfo = userDoc.data();
-  //
-  //                 if (userInfo == null) return;
-  //
-  //                 showDialog(
-  //                   context: context,
-  //                   builder: (_) => AlertDialog(
-  //                     title: const Text('참여자 정보'),
-  //                     content: Column(
-  //                       mainAxisSize: MainAxisSize.min,
-  //                       crossAxisAlignment: CrossAxisAlignment.start,
-  //                       children: [
-  //                         Text('ID: ${userInfo['id']}'),
-  //                         Text('성별: ${userInfo['gender'] ?? '미입력'}'),
-  //                         Text('나이: ${userInfo['age'] ?? '미입력'}세'),
-  //                         Text('연락처: ${userInfo['contact'] ?? '미입력'}'),
-  //                       ],
-  //                     ),
-  //                     actions: [
-  //                       TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
-  //                     ],
-  //                   ),
-  //                 );
-  //               },
-  //               trailing: _isLeader && !user['isLeader']
-  //                   ? IconButton(
-  //                 icon: const Icon(Icons.person_remove, color: Colors.red),
-  //                 onPressed: () => _kickParticipant(user['userId']),
-  //               )
-  //                   : null,
-  //             )),
-  //           ],
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+Widget _buildRequestsAndParticipants() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 24),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
+            ..._requests.map((user) => ListTile(
+              title: Text(user['userName'] ?? '알 수 없음'),
+              subtitle: Text('ID: ${user['id']}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check, color: Colors.green),
+                    onPressed: () => _acceptRequest(user['id'], user['userName']),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.red),
+                    onPressed: () => _rejectRequest(user['id']),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 }
