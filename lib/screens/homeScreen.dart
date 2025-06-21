@@ -17,14 +17,6 @@ import '../companionCard.dart';
 import 'companionListScreen.dart';
 import 'weatherScreen.dart';
 
-// 언어 선택 위젯을 위한 임포트 추가
-import 'package:app_for_traveler/language_selection_widget.dart';
-import 'package:battery_plus/battery_plus.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:app_for_traveler/services/recommendation_service.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // 다국어 지원 임포트
-import 'package:app_for_traveler/services/weather_data_fetcher.dart';
-
 
 class CompanionCard extends StatelessWidget {
   final String title;
@@ -217,13 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   String? _selectedPlaceId;
   String? _currentUserNickname;
-  String? _mapSearchKeyword;
   Timer? _disasterCheckTimer;
   Set<int> _shownDisasterSNs = {};
   List<Map<String, dynamic>> _disasterAlerts = [];
   List<Map<String, dynamic>> _commentAlerts = [];
-
-  String? _selectedMapCategory;
 
   @override
   void initState() {
@@ -273,18 +262,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _startDisasterCheckTimer() {
-    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    void _startDisasterCheckTimer() {
+    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
       try {
         final disasters = await DisasterApiService.fetchTodayDisasterMessages();
         for (final item in disasters) {
           final int sn = item['sn'];
-          final String msg = item['msg'];
+          final String translatedMsg = item['translated'] ?? item['msg']; // 🔁 번역 결과 우선 사용
 
           if (!_shownDisasterSNs.contains(sn)) {
             _shownDisasterSNs.add(sn);
             await _saveShownDisasterSNs();
-            if (mounted) _showDisasterAlert(msg);
+            if (mounted) _showDisasterAlert(translatedMsg); // ✅ 번역 메시지 출력
           }
         }
       } catch (e) {
@@ -297,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('📢 새로운 재난 문자'),
+        title: const Text('📢 New disaster message received'),
         content: Text(message),
         actions: [
           TextButton(
@@ -315,8 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final savedTimeMap = prefs.getString('sn_time_map');
     final timeMap = savedTimeMap != null ? jsonDecode(savedTimeMap) as Map<String, dynamic> : {};
 
+    // 재난문자 (영어 번역 포함) 가져오기
     final disasters = await DisasterApiService.fetchTodayDisasterMessages();
 
+    // timestamp 저장
     for (var d in disasters) {
       final snStr = d['sn'].toString();
       if (!timeMap.containsKey(snStr)) {
@@ -326,19 +317,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await prefs.setString('sn_time_map', jsonEncode(timeMap));
 
+    // 이미 본 SN만 필터링하고 영어 번역된 메시지만 리턴
     return disasters
         .where((d) => savedSnList.contains(d['sn'].toString()))
         .map((d) {
-      final snStr = d['sn'].toString();
-      final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
-      return {
-        'sn': d['sn'],
-        'message': d['msg'],
-        'timestamp': t,
-      };
-    })
+          final snStr = d['sn'].toString();
+          final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
+          return {
+            'sn': d['sn'],
+            'message': d['translated'] ?? d['msg'], // ✅ 영어 메시지만 사용
+            'timestamp': t,
+          };
+        })
         .toList();
-  }
+    }
+
 
   Future<List<Map<String, dynamic>>> _loadCommentAlerts(String currentUserId) async {
     final firestore = FirebaseFirestore.instance;
@@ -410,56 +403,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onItemTapped(int index, {String? searchKeyword, String? selectedCategory}) {
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
-      if (index != 1) { // 지도가 아니면 선택된 장소 ID와 검색 키워드, 카테고리 초기화
+      if (index != 1) {
         _selectedPlaceId = null;
-        // _mapSearchKeyword = null; // 이전에 searchKeyword를 직접 MapScreen에 전달하던 방식
-        _selectedMapCategory = null; // 카테고리 초기화
-      } else { // 지도 화면으로 이동할 경우
-        // _mapSearchKeyword = searchKeyword; // 이전에 searchKeyword를 직접 MapScreen에 전달하던 방식
-        _selectedMapCategory = selectedCategory; // ⭐️ 전달받은 카테고리 설정 ⭐️
       }
     });
-  }
-
-  // 언어 선택 다이얼로그를 보여주는 새로운 메서드
-  void _showLanguageSelectionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('언어 선택'), // 다이얼로그 제목
-          content: const LanguageSelectionWidget(), // 언어 선택 위젯 삽입
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // 다이얼로그 닫기
-              },
-              child: const Text('닫기'), // 닫기 버튼
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('여행 도우미'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('여행 도우미', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.grey[100], //세연
+        foregroundColor: Colors.black, //세연
         actions: [
-          // 지구본 아이콘 버튼 추가
-          IconButton(
-            icon: const Icon(Icons.language), // 지구본 아이콘
-            onPressed: () {
-              _showLanguageSelectionDialog(context); // 다이얼로그 팝업
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.sunny),
             onPressed: () {
@@ -490,30 +450,28 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _selectedIndex == 0
-          ? HomeContent(currentUserId: widget.currentUserId) // HomeContent는 여전히 currentUserId만 받음
+          ? HomeContent(currentUserId: widget.currentUserId) // 🔥 여기에 전달
           : _selectedIndex == 1
-          ? MapScreen(
-        currentUserId: widget.currentUserId,
-        selectedPlaceId: _selectedPlaceId,
-        searchKeyword: _mapSearchKeyword, // ⭐️ MapScreen에 검색 키워드 전달 ⭐️
-        //selectedCategory: _selectedMapCategory,
-        key: const ValueKey('map_screen'),
-      )
-          : _selectedIndex == 2
-          ? BoardScreen(
-        currentUserId: widget.currentUserId,
-        currentUserNickname: _currentUserNickname,
-      )
-          : MyPageScreen(
-        currentUserId: widget.currentUserId,
-        onLogout: widget.onLogout,
-        onPlaceSelected: (placeId) {
-          setState(() {
-            _selectedIndex = 1;
-            _selectedPlaceId = placeId;
-          });
-        },
-      ),
+              ? MapScreen(
+                  currentUserId: widget.currentUserId,
+                  selectedPlaceId: _selectedPlaceId,
+                  key: const ValueKey('map_screen'),
+                )
+              : _selectedIndex == 2
+                  ? BoardScreen(
+                      currentUserId: widget.currentUserId,
+                      currentUserNickname: _currentUserNickname,
+                    )
+                  : MyPageScreen(
+                      currentUserId: widget.currentUserId,
+                      onLogout: widget.onLogout,
+                      onPlaceSelected: (placeId) {
+                        setState(() {
+                          _selectedIndex = 1;
+                          _selectedPlaceId = placeId;
+                        });
+                      },
+                    ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
@@ -554,24 +512,6 @@ class _HomeContentState extends State<HomeContent> {
   List<Map<String, dynamic>> _topPlaces = [];
   List<Map<String, dynamic>> _recentPosts = [];
 
-  final RecommendationService _recommendationService = RecommendationService();
-  final WeatherDataFetcher _weatherDataFetcher = WeatherDataFetcher();
-
-  BatteryState _batteryState = BatteryState.unknown;
-  int _batteryLevel = 100;
-  ConnectivityResult _connectivityResult = ConnectivityResult.none;
-
-  late StreamSubscription<BatteryState> _batteryStateSubscription;
-  //late StreamSubscription<int> _batteryLevelSubscription;
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
-
-  RecommendationResult _currentRecommendation = RecommendationResult(
-    recommendationText: "초기 추천 로딩 중...", // 앱 시작 시 초기 메시지 설정
-  );
-
-  Map<String, dynamic>? _weatherData;
-  String _weatherError = ''; // 날씨 에러 메시지 저장용
-
   // initState: 위젯 초기화, 데이터 조회 시작
   // 역할: 데이터 초기화
   // 분류: 로직
@@ -580,115 +520,6 @@ class _HomeContentState extends State<HomeContent> {
     super.initState();
     _fetchTopPlaces();
     _fetchRecentPosts();
-    _initRecommendationMonitoring();
-  }
-
-  void _initRecommendationMonitoring() async {
-    final Battery battery = Battery();
-    final Connectivity connectivity = Connectivity();
-
-    await _fetchWeatherAndLocation();
-
-    // 초기 상태 가져오기
-    _batteryState = await battery.batteryState;
-    _batteryLevel = await battery.batteryLevel;
-    // checkConnectivity()는 List<ConnectivityResult>를 반환합니다.
-    _connectivityResult = (await connectivity.checkConnectivity()).first;
-
-    // 스트림 구독
-    _batteryStateSubscription = battery.onBatteryStateChanged.listen((BatteryState state) {
-      setState(() {
-        _batteryState = state;
-        _updateRecommendation(); // 상태 변경 시 추천 업데이트
-      });
-    });
-
-    _batteryStateSubscription = battery.onBatteryStateChanged.listen((BatteryState state) async {
-      // ⭐️ 변경: 배터리 상태가 바뀔 때마다 최신 배터리 레벨을 가져옵니다. ⭐️
-      _batteryState = state;
-      _batteryLevel = await battery.batteryLevel; // 최신 레벨을 비동기로 가져옵니다.
-      setState(() {
-        _updateRecommendation(); // 상태 및 레벨 변경 시 추천 업데이트
-      });
-    });
-
-    _connectivitySubscription = connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      if (results.isNotEmpty) {
-        setState(() {
-          _connectivityResult = results.first;
-          _updateRecommendation(); // 상태 변경 시 추천 업데이트
-        });
-      }
-    });
-
-    // 모든 초기 상태를 가져온 후 최초 추천 업데이트
-    _updateRecommendation();
-  }
-  Future<void> _fetchWeatherAndLocation() async {
-    setState(() {
-      _weatherError = ''; // 새로운 시도 전에 에러 메시지 초기화
-    });
-    try {
-      final position = await _weatherDataFetcher.getCurrentLocation(context);
-      if (position != null) {
-        final weatherAndForecast = await _weatherDataFetcher.fetchWeatherData(
-          position.latitude,
-          position.longitude,
-        );
-        setState(() {
-          _weatherData = weatherAndForecast; // weather와 forecast 모두 포함
-        });
-        print('날씨 데이터 성공적으로 가져옴: $_weatherData');
-      } else {
-        // 위치를 가져오지 못했으면 WeatherDataFetcher 내부에서 다이얼로그가 표시됩니다.
-        // 여기서는 _weatherData를 null로 유지하고, RecommendationService는 null을 받습니다.
-        _weatherData = null;
-      }
-    } catch (e) {
-      print('날씨 데이터 로드 실패 (HomeContent): $e');
-      setState(() {
-        _weatherError = '날씨 정보를 가져오는데 실패했습니다.'; // 사용자에게 친숙한 메시지
-        _weatherData = null;
-      });
-    } finally {
-      _updateRecommendation(); // 날씨 데이터를 가져온 후 (성공/실패 무관) 추천 업데이트
-    }
-  }
-  // 추천 문구를 업데이트하는 메서드
-  void _updateRecommendation() {
-    if (!mounted) return; // 위젯이 트리에 연결되어 있을 때만 실행
-
-    // 로그 출력 (디버깅용)
-    print('Updating recommendation in HomeContent:');
-    print('  Battery Level: $_batteryLevel');
-    print('  Battery State: ${_batteryState.toString().split('.').last}');
-    print('  Connectivity: ${_connectivityResult.toString().split('.').last}');
-    print('  Weather Data: $_weatherData');
-
-    // RecommendationService 호출 시 context를 전달합니다.
-    final RecommendationResult result = _recommendationService.getRecommendation(
-      context: context,
-      weatherData: _weatherData, // 실제 날씨 데이터를 여기에 전달하세요 (예: WeatherScreen에서 가져와서)
-      batteryLevel: _batteryLevel,
-      batteryState: _batteryState,
-      connectivityResult: _connectivityResult,
-    );
-
-    setState(() {
-      _currentRecommendation = result;
-    });
-
-    // 생성된 추천 결과도 로그로 출력 (디버깅용)
-    print('  Generated Recommendation: ${_currentRecommendation.recommendationText}');
-    print('  Generated Search Keyword: ${_currentRecommendation.searchKeyword}');
-  }
-
-  @override
-  void dispose() {
-    // ⭐️ 추가: 스트림 구독 해제 ⭐️
-    _batteryStateSubscription.cancel();
-    _connectivitySubscription.cancel();
-    super.dispose();
   }
 
   // _fetchTopPlaces: Firestore에서 인기 장소 가져와 정렬 후 상태 업데이트
@@ -780,15 +611,14 @@ class _HomeContentState extends State<HomeContent> {
   // 분류: 디자인
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!; // BuildContext를 사용하여 AppLocalizations 가져오기
-
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: 20),
-          // 추천 섹션
+          // 추천 섹션: 날씨 기반 활동 제안 및 지도 화면 이동 버튼
+          // 역할: 추천 UI 표시
+          // 분류: 디자인
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
@@ -808,47 +638,32 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  l10n.recommendationBasedOnCurrentStatus,
-                  style: const TextStyle(
+                const Text(
+                  '현재 상태 기반 추천',
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_weatherError.isNotEmpty)
-                  Text(
-                    _weatherError,
-                    style: const TextStyle(fontSize: 16, color: Colors.red),
-                    textAlign: TextAlign.center,
-                  )
-                else if (_weatherData == null)
-                  const CircularProgressIndicator()
-                else
-                  Text(
-                    _currentRecommendation.recommendationText,
-                    style: const TextStyle(fontSize: 18),
-                    textAlign: TextAlign.center,
+                const Text(
+                  '비가 오니 실내 활동을 추천드려요!',
+                  style: TextStyle(fontSize: 18),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                    homeState?._onItemTapped(1);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    textStyle: const TextStyle(fontSize: 18),
                   ),
-                if (_currentRecommendation.searchKeyword != null) ...[
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () {
-                      final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-
-                      homeState?._onItemTapped(1, selectedCategory: _currentRecommendation.searchKeyword);
-                      print('Navigating to MapScreen with category: ${_currentRecommendation.searchKeyword}');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      textStyle: const TextStyle(fontSize: 18),
-                    ),
-                    child: Text(
-                      '${_currentRecommendation.searchKeyword} ${l10n.mapView}',
-                    ),
-                  ),
-                ],
+                  child: const Text('실내 카페 추천 지도 보기'),
+                ),
               ],
             ),
           ),
@@ -871,25 +686,25 @@ class _HomeContentState extends State<HomeContent> {
                   child: _topPlaces.isEmpty
                       ? const Center(child: Text('인기 장소가 없습니다.'))
                       : ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _topPlaces.length,
-                    itemBuilder: (context, index) {
-                      final place = _topPlaces[index];
-                      return HotspotCard(
-                        title: place['name'],
-                        description: place['description'],
-                        averageRating: place['averageRating'],
-                        latestReview: place['latestReview'],
-                        onTap: () {
-                          final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                          homeState?.setState(() {
-                            homeState._selectedIndex = 1;
-                            homeState._selectedPlaceId = place['id'];
-                          });
-                        },
-                      );
-                    },
-                  ),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _topPlaces.length,
+                          itemBuilder: (context, index) {
+                            final place = _topPlaces[index];
+                            return HotspotCard(
+                              title: place['name'],
+                              description: place['description'],
+                              averageRating: place['averageRating'],
+                              latestReview: place['latestReview'],
+                              onTap: () {
+                                final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                                homeState?.setState(() {
+                                  homeState._selectedIndex = 1;
+                                  homeState._selectedPlaceId = place['id'];
+                                });
+                              },
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -927,34 +742,34 @@ class _HomeContentState extends State<HomeContent> {
                 const SizedBox(height: 12),
                 _recentPosts.isEmpty
                     ? const Text(
-                  '게시물이 없습니다.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                )
+                        '게시물이 없습니다.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      )
                     : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _recentPosts.length,
-                  itemBuilder: (context, index) {
-                    final post = _recentPosts[index];
-                    return ListTile(
-                      title: Text(
-                        post['title'] ?? '제목 없음',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _recentPosts.length,
+                        itemBuilder: (context, index) {
+                          final post = _recentPosts[index];
+                          return ListTile(
+                            title: Text(
+                              post['title'] ?? '제목 없음',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
+                              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                            onTap: () {
+                              final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                              homeState?._onItemTapped(2);
+                            },
+                          );
+                        },
+                        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
                       ),
-                      subtitle: Text(
-                        '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
-                        style: const TextStyle(fontSize: 14, color: Colors.grey),
-                      ),
-                      onTap: () {
-                        final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                        homeState?._onItemTapped(2);
-                      },
-                    );
-                  },
-                  separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
-                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
