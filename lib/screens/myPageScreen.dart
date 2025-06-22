@@ -34,6 +34,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List<DocumentSnapshot> _myPosts = [];
   List<DocumentSnapshot> _myComments = [];
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+  List<DocumentSnapshot> _myPlaces = [];
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _setupRealtimeListener();
     _loadMyPosts();
     _loadMyCommentedPosts();
+    _loadMyPlaces(); 
   }
 
   @override
@@ -113,6 +115,50 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
 
     setState(() => _myComments = allPosts);
+  }
+
+  Future<void> _loadMyPlaces() async {
+    final snapshot = await _firestore
+        .collection('user_places')
+        .where('submittedBy', isEqualTo: widget.currentUserId)
+        .get();
+    setState(() {
+      _myPlaces = snapshot.docs;
+    });
+  }
+
+  void _showMyPlaces() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('내가 추가한 장소')),
+          body: ListView.builder(
+            itemCount: _myPlaces.length,
+            itemBuilder: (context, index) {
+              final data = _myPlaces[index].data() as Map<String, dynamic>;
+              final placeId = data['id'] ?? '';
+
+              return ListTile(
+                title: Text(data['name'] ?? '장소명 없음'),
+                subtitle: Text(data['category'] ?? ''),
+                trailing: Text(
+                  data['Added'] == true ? '승인 완료' : '검토 중',
+                  style: TextStyle(
+                    color: data['Added'] == true ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onPlaceSelected(placeId);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   void _showSimpleList(String title, List<DocumentSnapshot> docs) {
@@ -308,6 +354,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           // 카드형 메뉴
           _buildCardItem('내 정보 수정', Icons.edit, _showEditProfileDialog),
           _buildCardItem('즐겨찾기 한 장소', Icons.star_border, _showFavorites),
+          _buildCardItem('내가 추가한 장소', Icons.place_outlined, _showMyPlaces),
           _buildCardItem('여행 스케줄', Icons.calendar_month, () {
             Navigator.push(
               context,
