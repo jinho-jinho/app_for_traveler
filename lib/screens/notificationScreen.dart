@@ -120,8 +120,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         authorId: notif['postAuthorId'],
                         authorNickname: notif['postAuthorNickname'],
                         createdAt: notif['postCreatedAt'],
-                        currentUserId: currentUserId,
-                        currentUserNickname: currentUserNickname,
+                        currentUserId: widget.currentUserId,
+                        currentUserNickname: widget.currentUserNickname,
                       ),
                     ),
                   );
