@@ -6,17 +6,15 @@ import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 // ──────────────────────────────────────────────────────────────────
 
-// 게시물 상세 화면 StatefulWidget
-// 역할: 게시물 내용 및 댓글/대댓글 표시 및 관리
 class PostDetailScreen extends StatefulWidget {
-  final String postId; // 게시물 ID
-  final String title; // 게시물 제목
-  final String content; // 게시물 내용
-  final String authorId; // 작성자 ID
-  final String authorNickname; // 작성자 닉네임
-  final DateTime createdAt; // 작성 시간
-  final String currentUserId; // 현재 사용자 ID
-  final String? currentUserNickname; // 현재 사용자 닉네임
+  final String postId;
+  final String title;
+  final String content;
+  final String authorId;
+  final String authorNickname;
+  final DateTime createdAt;
+  final String currentUserId;
+  final String? currentUserNickname;
 
   const PostDetailScreen({
     super.key,
@@ -34,20 +32,21 @@ class PostDetailScreen extends StatefulWidget {
   _PostDetailScreenState createState() => _PostDetailScreenState();
 }
 
-// PostDetailScreen 상태 관리 클래스
-// 역할: 댓글 및 대댓글 데이터 관리 및 UI 상태 제어
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _commentController = TextEditingController();
   final Map<String, TextEditingController> _replyControllers = {};
+
   List<Map<String, dynamic>> _comments = []; // 댓글 목록
 
   String? _editingCommentId; // 수정 중인 댓글 ID
   String? _replyingToCommentId; // 대댓글 작성 중인 댓글 ID
 
+
   @override
   void initState() {
     super.initState();
+
     _loadComments(); // 댓글 로드
   }
 
@@ -109,6 +108,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
+
           SnackBar(content: Text(appLocalizations.failedToLoadComments(e.toString()))), // 다국어 적용
         );
       }
@@ -284,6 +284,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           .doc(widget.postId)
           .collection('comments')
           .doc(commentId)
+
           .collection('replies')
           .add({
         'userId': widget.currentUserId,
@@ -301,6 +302,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           SnackBar(content: Text(appLocalizations.replyAddedSuccess)), // 다국어 적용
         );
       }
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -329,7 +331,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final TextEditingController replyController = _replyControllers[commentId]!;
     if (replyController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
+
         SnackBar(content: Text(appLocalizations.replyEmptyWarning)), // 다국어 적용 (재사용)
+
       );
       return;
     }
@@ -362,7 +366,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       }
     }
   }
-
 
   // _deleteReply: 대댓글 삭제
   Future<void> _deleteReply(String commentId, String replyId) async {
@@ -417,6 +420,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   // UI 구성
+
   @override
   Widget build(BuildContext context) {
     // ──────────────────────────────────────────────────────────────────
@@ -424,15 +428,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     // ──────────────────────────────────────────────────────────────────
     return Scaffold(
       appBar: AppBar(
+
         title: Text(appLocalizations.postDetailTitle), // 다국어 적용
         backgroundColor: Colors.white,
         elevation: 0,
         titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+
         iconTheme: const IconThemeData(color: Colors.black),
+        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
       ),
       body: Column(
         children: [
           Expanded(
+
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -607,6 +615,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           ),
           // 댓글 작성 입력창
           Container(
+
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -618,26 +627,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
               ],
             ),
+
             child: SafeArea(
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.grey,
-                    child: Icon(Icons.person, color: Colors.white, size: 20),
-                  ),
+                  const CircleAvatar(child: Icon(Icons.person)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: _commentController,
                       decoration: InputDecoration(
+
                         hintText: _editingCommentId != null ? appLocalizations.editCommentHint : appLocalizations.enterCommentHint, // 다국어 적용
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(color: Colors.grey),
                         ),
+
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                     ),
                   ),
@@ -649,7 +658,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ],
               ),
             ),
-          ),
+          )
         ],
       ),
     );

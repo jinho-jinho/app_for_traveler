@@ -108,6 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
         'age': age,
         'contact': contact,
         'createdAt': FieldValue.serverTimestamp(),
+        'favorites': [],
       });
 
       widget.onLogin(id);

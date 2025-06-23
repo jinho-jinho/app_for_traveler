@@ -37,6 +37,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List<DocumentSnapshot> _myPosts = [];
   List<DocumentSnapshot> _myComments = [];
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+  List<DocumentSnapshot> _myPlaces = [];
 
   @override
   void initState() {
@@ -44,6 +45,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _loadUserData();
     _loadMyPosts();
     _loadMyComments();
+    _loadMyCommentedPosts();
+    _loadMyPlaces(); 
   }
 
   @override
@@ -116,6 +119,123 @@ class _MyPageScreenState extends State<MyPageScreen> {
         SnackBar(content: Text('${appLocalizations.profileUpdateFailed} $e')), // 다국어 적용
       );
     }
+  Future<void> _loadMyPlaces() async {
+    final snapshot = await _firestore
+        .collection('user_places')
+        .where('submittedBy', isEqualTo: widget.currentUserId)
+        .get();
+    setState(() {
+      _myPlaces = snapshot.docs;
+    });
+  }
+
+  void _showMyPlaces() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('내가 추가한 장소')),
+          body: ListView.builder(
+            itemCount: _myPlaces.length,
+            itemBuilder: (context, index) {
+              final data = _myPlaces[index].data() as Map<String, dynamic>;
+              final placeId = data['id'] ?? '';
+
+              return ListTile(
+                title: Text(data['name'] ?? '장소명 없음'),
+                subtitle: Text(data['category'] ?? ''),
+                trailing: Text(
+                  data['Added'] == true ? '승인 완료' : '검토 중',
+                  style: TextStyle(
+                    color: data['Added'] == true ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onPlaceSelected(placeId);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSimpleList(String title, List<DocumentSnapshot> docs) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            Scaffold(
+                backgroundColor: Colors.grey[100],
+              appBar: AppBar(title: Text(title), backgroundColor: Colors.grey[100],),
+                body: ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    return _buildInfoCard(
+                      title: data['title'] ?? '제목 없음',
+                      subtitle: data['content'] ?? '',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PostDetailScreen(
+                            postId: docs[index].id,
+                            title: data['title'],
+                            content: data['content'],
+                            authorId: data['authorId'],
+                            authorNickname: data['authorNickname'],
+                            createdAt: (data['createdAt'] as Timestamp).toDate(),
+                            currentUserId: widget.currentUserId,
+                            currentUserNickname: _nickname,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                )
+            ),
+      ),
+    );
+  }
+
+  void _showFavorites() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            Scaffold(
+                backgroundColor: Colors.grey[100],
+              appBar: AppBar(title: const Text('즐겨찾기한 장소'), backgroundColor: Colors.grey[100],),
+                body: ListView(
+                  children: _favorites.map((placeId) {
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: _firestore.collection('places').doc(placeId).get(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting)
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        if (!snapshot.hasData || !snapshot.data!.exists)
+                          return _buildInfoCard(title: placeId);
+
+                        final data = snapshot.data!.data() as Map<String, dynamic>;
+                        return _buildInfoCard(
+                          title: data['name'] ?? placeId,
+                          subtitle: data['address'] ?? '',
+                          onTap: () => widget.onPlaceSelected(placeId),
+                        );
+                      },
+                    );
+                  }).toList(),
+                )
+            ),
+      ),
+    );
+
   }
 
   void _showEditProfileDialog() {
@@ -453,7 +573,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ),
     );
   }
-
   // _buildButtonGroup 메서드에 appLocalizations를 파라미터로 추가
   Widget _buildButtonGroup(AppLocalizations appLocalizations) {
     return Center(

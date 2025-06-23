@@ -101,6 +101,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
           .collection('companion_comments')
           .where('companionId', isEqualTo: widget.companionId)
           .orderBy('createdAt', descending: false)
+
           .get();
 
       setState(() {
@@ -180,7 +181,6 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
             });
           }
         }
-
         setState(() {
           _participantList = fetchedParticipants;
           _isParticipating = _participantList.any((p) => p['id'] == widget.currentUserId);
@@ -202,6 +202,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.companionApplicationNotPossible))); // 다국어 적용
       return;
     }
+
     try {
       await _firestore.collection('companions').doc(widget.companionId).update({
         'requests': FieldValue.arrayUnion([widget.currentUserId])
@@ -219,7 +220,6 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       }
     }
   }
-
   Future<void> _cancelApplication() async {
     // ──────────────────────────────────────────────────────────────────
     final appLocalizations = AppLocalizations.of(context)!;
@@ -381,6 +381,47 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
     }
   }
 
+
+  Future<void> _loadRequests() async {
+    final snapshot = await _firestore
+        .collection('companions')
+        .doc(widget.companionId)
+        .collection('requests')
+        .get();
+
+    final requests = snapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
+
+    setState(() => _requests = requests);
+  }
+
+  Future<void> _loadParticipants() async {
+    final snapshot = await _firestore
+        .collection('companions')
+        .doc(widget.companionId)
+        .collection('participants')
+        .get();
+
+    List<Map<String, dynamic>> participants = [];
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      // gender 정보가 없으면 users에서 보충
+      if (data['gender'] == null) {
+        final userSnapshot = await _firestore.collection('users').doc(data['userId']).get();
+        final userGender = userSnapshot.data()?['gender'];
+        data['gender'] = userGender ?? '미입력';
+      }
+      participants.add(data);
+    }
+
+    setState(() {
+      _participantList = participants;
+    });
+  }
 
   Future<void> _acceptRequest(String userId, String userName) async {
     // ──────────────────────────────────────────────────────────────────
@@ -714,6 +755,7 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
                 ),
                 child: Text(appLocalizations.applyForCompanionButton), // 다국어 적용
               ),
+
           ],
         ),
       ),
@@ -742,7 +784,6 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       ),
     );
   }
-
   Widget _buildRequestsAndParticipants() {
     // ──────────────────────────────────────────────────────────────────
     final appLocalizations = AppLocalizations.of(context)!;
@@ -1027,4 +1068,47 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
       ),
     );
   }
+
+Widget _buildRequestsAndParticipants() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 24),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
+            ..._requests.map((user) => ListTile(
+              title: Text(user['userName'] ?? '알 수 없음'),
+              subtitle: Text('ID: ${user['id']}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check, color: Colors.green),
+                    onPressed: () => _acceptRequest(user['id'], user['userName']),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.red),
+                    onPressed: () => _rejectRequest(user['id']),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
 }

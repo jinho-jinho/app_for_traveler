@@ -24,7 +24,8 @@ class BoardScreen extends StatefulWidget {
 // BoardScreen의 상태를 관리하는 State 클래스
 // Firestore에서 게시물 데이터를 가져오고 UI를 업데이트하며 사용자 상호작용 처리
 class _BoardScreenState extends State<BoardScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance; // Firestore 인스턴스
+  final FirebaseFirestore _firestore = FirebaseFirestore
+      .instance; // Firestore 인스턴스
   bool _isLoading = true; // 데이터 로딩 상태를 나타내는 플래그
   List<Map<String, dynamic>> _posts = []; // 게시물 데이터를 저장하는 리스트
 
@@ -69,6 +70,21 @@ class _BoardScreenState extends State<BoardScreen> {
           .collection('posts')
           .orderBy('createdAt', descending: true)
           .get();
+      // 가져온 데이터를 Map 형태로 변환하여 리스트에 저장
+      List<Map<String, dynamic>> posts = postSnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'title': data['title'] as String? ?? '제목 없음',
+          'content': data['content'] as String? ?? '내용 없음',
+          'authorId': data['authorId'] as String? ?? '알 수 없음',
+          'authorNickname': data['authorNickname'] as String? ?? '알 수 없음',
+          'createdAt': (data['createdAt'] as Timestamp?)?.toDate() ??
+              DateTime.now(),
+        };
+      }).toList();
+
+      // 상태 업데이트: 게시물 리스트 저장 및 로딩 종료
       setState(() {
         _posts = snapshot.docs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
@@ -92,7 +108,6 @@ class _BoardScreenState extends State<BoardScreen> {
       });
     }
   }
-
   // _showAddPostDialog: 새 게시물 작성 다이얼로그 표시
   // 역할: 게시물 작성 UI 제공
   // 분류: 디자인
@@ -172,7 +187,6 @@ class _BoardScreenState extends State<BoardScreen> {
       }
     }
   }
-
   // _buildPostList: 검색어에 따라 필터링된 게시물 목록을 표시
   // 역할: 게시물 목록 UI 구성
   // 분류: 디자인
@@ -231,6 +245,7 @@ class _BoardScreenState extends State<BoardScreen> {
           ),
         );
       },
+
     );
   }
 
@@ -242,17 +257,24 @@ class _BoardScreenState extends State<BoardScreen> {
     final appLocalizations = AppLocalizations.of(context)!;
     // ──────────────────────────────────────────────────────────────────
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text(appLocalizations.boardTitle), // 다국어 적용
+        backgroundColor: Colors.grey[100],
         elevation: 0,
-        backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('게시판', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: '글 작성',
+            onPressed: _showAddPostDialog,
+          )
+        ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               decoration: InputDecoration(
                 hintText: appLocalizations.searchHintText, // 다국어 적용

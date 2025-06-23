@@ -684,6 +684,7 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: 지도 카메라 이동 및 바텀시트 표시
   // 분류: 로직
   Future<void> _moveToSelectedPlace(String placeId) async {
+    double zoomLevel = 15; // 기본 줌 레벨
     while (mapController == null) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
@@ -715,13 +716,38 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    if (selectedPlace != null) {
-      await mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(selectedPlace.location, 15),
-      );
-      _showPlaceDetailsBottomSheet(selectedPlace);
-      _lastProcessedPlaceId = placeId;
+    if (selectedPlace == null) {
+      final snap = await _firestore.collection('user_places').doc(placeId).get();
+
+      if (snap.exists) {
+        zoomLevel = 20; // 사용자 추가 장소는 더 가까이 보여줌, 아이콘 없음
+        final d = snap.data()!;
+        selectedPlace = Place(
+          id: snap.id,
+          name: d['name'] ?? '',
+          location: LatLng(
+            (d['latitude'] as num).toDouble(),
+            (d['longitude'] as num).toDouble(),
+          ),
+          category: d['category'] ?? '',
+          subcategory: d['subcategory'] ?? '',
+          isEncrypted: d['isEncrypted'] ?? false,
+          isFree: d['isFree'] ?? true,
+          isUserAdded: true,
+          reviews: const [],
+          reports: const [],
+          address: d['address'],
+        );
+      }
     }
+
+    if (selectedPlace == null) return; // 못 찾으면 종료
+
+    await mapController!.animateCamera(
+      CameraUpdate.newLatLngZoom(selectedPlace.location, zoomLevel), 
+    );
+    _showPlaceDetailsBottomSheet(selectedPlace);
+    _lastProcessedPlaceId = placeId;
   }
 
   // 이미지 업로드 함수 (base64 인코딩)
@@ -1427,7 +1453,7 @@ class _MapScreenState extends State<MapScreen> {
                     );
 
                     try {
-                      await _firestore.collection('places').doc(newPlace.id).set({
+                      final placeData = {
                         'id': newPlace.id,
                         'name': newPlace.name,
                         'latitude': newPlace.location.latitude,
@@ -1436,59 +1462,65 @@ class _MapScreenState extends State<MapScreen> {
                         'subcategory': newPlace.subcategory,
                         'isEncrypted': newPlace.isEncrypted,
                         'isFree': newPlace.isFree,
-                        'isUserAdded': newPlace.isUserAdded,
-                        'reviews': [],
-                        'reports': [],
-                        'favoritedBy': [],
-                        'address': newPlace.address, // 주소 필드 추가
-                      });
+                        'Added': false,
+                        'address': newPlace.address,
+                        'createdAt': FieldValue.serverTimestamp(),
+                        'submittedBy': widget.currentUserId,
+                      };
 
-                      setState(() {
-                        switch (subcategory) {
-                          case '병원':
-                            _hospitals.add(newPlace);
-                            break;
-                          case '약국':
-                            _pharmacies.add(newPlace);
-                            break;
-                          case '경찰서':
-                            _policeStations.add(newPlace);
-                            break;
-                          case 'ATM':
-                            _atms.add(newPlace);
-                            break;
-                          case '은행':
-                            _banks.add(newPlace);
-                            break;
-                          case '환전소':
-                            _currencyExchanges.add(newPlace);
-                            break;
-                          case '공중 화장실':
-                            _publicToilets.add(newPlace);
-                            _restrooms.add(newPlace);
-                            break;
-                          case '물품 보관함':
-                            _lockers.add(newPlace);
-                            break;
-                          case '휴대폰 충전소':
-                            _chargingStations.add(newPlace);
-                            break;
-                          case '공공 와이파이':
-                            _publicWifis.add(newPlace);
-                            break;
-                          case '카페':
-                            _cafes.add(newPlace);
-                            break;
-                          case '음식점':
-                            _restaurants.add(newPlace);
-                            break;
-                          case '랜드마크':
-                            _landmarks.add(newPlace);
-                            break;
-                        }
-                      });
+                      await _firestore.collection('user_places').doc(newPlace.id).set(placeData);
 
-                      mapController?.animateCamera(CameraUpdate.newLatLng(position));
+                      // setState(() {
+                      //   switch (subcategory) {
+                      //     case '병원':
+                      //       _hospitals.add(newPlace);
+                      //       break;
+                      //     case '약국':
+                      //       _pharmacies.add(newPlace);
+                      //       break;
+                      //     case '경찰서':
+                      //       _policeStations.add(newPlace);
+                      //       break;
+                      //     case 'ATM':
+                      //       _atms.add(newPlace);
+                      //       break;
+                      //     case '은행':
+                      //       _banks.add(newPlace);
+                      //       break;
+                      //     case '환전소':
+                      //       _currencyExchanges.add(newPlace);
+                      //       break;
+                      //     case '공중 화장실':
+                      //       _publicToilets.add(newPlace);
+                      //       _restrooms.add(newPlace);
+                      //       break;
+                      //     case '물품 보관함':
+                      //       _lockers.add(newPlace);
+                      //       break;
+                      //     case '휴대폰 충전소':
+                      //       _chargingStations.add(newPlace);
+                      //       break;
+                      //     case '공공 와이파이':
+                      //       _publicWifis.add(newPlace);
+                      //       break;
+                      //     case '카페':
+                      //       _cafes.add(newPlace);
+                      //       break;
+                      //     case '음식점':
+                      //       _restaurants.add(newPlace);
+                      //       break;
+                      //     case '랜드마크':
+                      //       _landmarks.add(newPlace);
+                      //       break;
+                      //   }
+                      // });
+                      //mapController?.animateCamera(CameraUpdate.newLatLng(position));
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('장소 제안이 완료되었습니다. 검토 후 반영됩니다.')),
+                        );
+                      }
                     } catch (e) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1496,7 +1528,6 @@ class _MapScreenState extends State<MapScreen> {
                         );
                       }
                     }
-
                     Navigator.pop(context);
                   },
                   child: const Text('추가'),

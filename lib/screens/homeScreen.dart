@@ -10,7 +10,6 @@ import 'package:app_for_traveler/services/disaster_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'companionListScreen.dart';
 import 'notificationScreen.dart';
 import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
 import '../companionCard.dart'; // This import is redundant as CompanionCard is defined in this file.
@@ -18,6 +17,10 @@ import 'companionListScreen.dart'; // This import is redundant.
 import 'weatherScreen.dart';
 import 'package:app_for_traveler/language_selection_widget.dart'; // 이 경로가 정확한지 확인하세요.
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+import 'weatherScreen.dart';
+import 'package:app_for_traveler/screens/companionListScreen.dart';
+
 
 class CompanionCard extends StatelessWidget {
   final String title;
@@ -817,12 +820,14 @@ class _HomeContentState extends State<HomeContent> {
                     return ListTile(
                       title: Text(
                         post['title'] ?? appLocalizations.noTitle, // '제목 없음' 다국어 처리
+
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
                         '${appLocalizations.author}: ${post['authorNickname'] ?? appLocalizations.unknown}', // '작성자', '알 수 없음' 다국어 처리
+
                         style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       onTap: () {
