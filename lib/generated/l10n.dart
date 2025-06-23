@@ -53,8 +53,6 @@ class S {
   static S? maybeOf(BuildContext context) {
     return Localizations.of<S>(context, S);
   }
-<<<<<<< HEAD
-=======
 
   /// `Login`
   String get loginScreenTitle {
@@ -4405,21 +4403,20 @@ class S {
   String get confirmButton {
     return Intl.message('confirm', name: 'confirmButton', desc: '', args: []);
   }
->>>>>>> 3e6f6c7 (translate end)
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<S> {
   const AppLocalizationDelegate();
 
   List<Locale> get supportedLocales {
-<<<<<<< HEAD
+
     return const <Locale>[Locale.fromSubtags(languageCode: 'en')];
-=======
+
     return const <Locale>[
       Locale.fromSubtags(languageCode: 'en'),
       Locale.fromSubtags(languageCode: 'ko'),
     ];
->>>>>>> 3e6f6c7 (translate end)
+
   }
 
   @override
