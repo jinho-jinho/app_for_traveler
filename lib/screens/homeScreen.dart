@@ -10,12 +10,11 @@ import 'package:app_for_traveler/services/disaster_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'companionListScreen.dart';
 import 'notificationScreen.dart';
 import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
-import '../companionCard.dart';
-import 'companionListScreen.dart';
 import 'weatherScreen.dart';
+import 'package:app_for_traveler/screens/companionListScreen.dart';
+
 
 
 class CompanionCard extends StatelessWidget {
@@ -263,17 +262,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startDisasterCheckTimer() {
-    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+    _disasterCheckTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
       try {
         final disasters = await DisasterApiService.fetchTodayDisasterMessages();
         for (final item in disasters) {
           final int sn = item['sn'];
-          final String msg = item['msg'];
+          final String translatedMsg = item['translated'] ?? item['msg']; // 🔁 번역 결과 우선 사용
 
           if (!_shownDisasterSNs.contains(sn)) {
             _shownDisasterSNs.add(sn);
             await _saveShownDisasterSNs();
-            if (mounted) _showDisasterAlert(msg);
+            if (mounted) _showDisasterAlert(translatedMsg); // ✅ 번역 메시지 출력
           }
         }
       } catch (e) {
@@ -286,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('📢 새로운 재난 문자'),
+        title: const Text('📢 New disaster message received'),
         content: Text(message),
         actions: [
           TextButton(
@@ -304,8 +303,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final savedTimeMap = prefs.getString('sn_time_map');
     final timeMap = savedTimeMap != null ? jsonDecode(savedTimeMap) as Map<String, dynamic> : {};
 
+    // 재난문자 (영어 번역 포함) 가져오기
     final disasters = await DisasterApiService.fetchTodayDisasterMessages();
 
+    // timestamp 저장
     for (var d in disasters) {
       final snStr = d['sn'].toString();
       if (!timeMap.containsKey(snStr)) {
@@ -315,19 +316,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await prefs.setString('sn_time_map', jsonEncode(timeMap));
 
+    // 이미 본 SN만 필터링하고 영어 번역된 메시지만 리턴
     return disasters
         .where((d) => savedSnList.contains(d['sn'].toString()))
         .map((d) {
-          final snStr = d['sn'].toString();
-          final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
-          return {
-            'sn': d['sn'],
-            'message': d['msg'],
-            'timestamp': t,
-          };
-        })
+      final snStr = d['sn'].toString();
+      final t = DateTime.tryParse(timeMap[snStr] ?? '') ?? d['timestamp'];
+      return {
+        'sn': d['sn'],
+        'message': d['translated'] ?? d['msg'], // ✅ 영어 메시지만 사용
+        'timestamp': t,
+      };
+    })
         .toList();
   }
+
 
   Future<List<Map<String, dynamic>>> _loadCommentAlerts(String currentUserId) async {
     final firestore = FirebaseFirestore.instance;
@@ -412,9 +415,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('여행 도우미'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        title: const Text('여행 도우미', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.grey[100], //세연
+        foregroundColor: Colors.black, //세연
         actions: [
           IconButton(
             icon: const Icon(Icons.sunny),
@@ -429,7 +432,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () {
+            onPressed: () async {
+              await _loadAllAlerts();
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -448,26 +453,26 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _selectedIndex == 0
           ? HomeContent(currentUserId: widget.currentUserId) // 🔥 여기에 전달
           : _selectedIndex == 1
-              ? MapScreen(
-                  currentUserId: widget.currentUserId,
-                  selectedPlaceId: _selectedPlaceId,
-                  key: const ValueKey('map_screen'),
-                )
-              : _selectedIndex == 2
-                  ? BoardScreen(
-                      currentUserId: widget.currentUserId,
-                      currentUserNickname: _currentUserNickname,
-                    )
-                  : MyPageScreen(
-                      currentUserId: widget.currentUserId,
-                      onLogout: widget.onLogout,
-                      onPlaceSelected: (placeId) {
-                        setState(() {
-                          _selectedIndex = 1;
-                          _selectedPlaceId = placeId;
-                        });
-                      },
-                    ),
+          ? MapScreen(
+        currentUserId: widget.currentUserId,
+        selectedPlaceId: _selectedPlaceId,
+        key: const ValueKey('map_screen'),
+      )
+          : _selectedIndex == 2
+          ? BoardScreen(
+        currentUserId: widget.currentUserId,
+        currentUserNickname: _currentUserNickname,
+      )
+          : MyPageScreen(
+        currentUserId: widget.currentUserId,
+        onLogout: widget.onLogout,
+        onPlaceSelected: (placeId) {
+          setState(() {
+            _selectedIndex = 1;
+            _selectedPlaceId = placeId;
+          });
+        },
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
@@ -682,25 +687,25 @@ class _HomeContentState extends State<HomeContent> {
                   child: _topPlaces.isEmpty
                       ? const Center(child: Text('인기 장소가 없습니다.'))
                       : ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _topPlaces.length,
-                          itemBuilder: (context, index) {
-                            final place = _topPlaces[index];
-                            return HotspotCard(
-                              title: place['name'],
-                              description: place['description'],
-                              averageRating: place['averageRating'],
-                              latestReview: place['latestReview'],
-                              onTap: () {
-                                final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                                homeState?.setState(() {
-                                  homeState._selectedIndex = 1;
-                                  homeState._selectedPlaceId = place['id'];
-                                });
-                              },
-                            );
-                          },
-                        ),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _topPlaces.length,
+                    itemBuilder: (context, index) {
+                      final place = _topPlaces[index];
+                      return HotspotCard(
+                        title: place['name'],
+                        description: place['description'],
+                        averageRating: place['averageRating'],
+                        latestReview: place['latestReview'],
+                        onTap: () {
+                          final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                          homeState?.setState(() {
+                            homeState._selectedIndex = 1;
+                            homeState._selectedPlaceId = place['id'];
+                          });
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -738,34 +743,34 @@ class _HomeContentState extends State<HomeContent> {
                 const SizedBox(height: 12),
                 _recentPosts.isEmpty
                     ? const Text(
-                        '게시물이 없습니다.',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      )
+                  '게시물이 없습니다.',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                )
                     : ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _recentPosts.length,
-                        itemBuilder: (context, index) {
-                          final post = _recentPosts[index];
-                          return ListTile(
-                            title: Text(
-                              post['title'] ?? '제목 없음',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
-                              style: const TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                            onTap: () {
-                              final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                              homeState?._onItemTapped(2);
-                            },
-                          );
-                        },
-                        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _recentPosts.length,
+                  itemBuilder: (context, index) {
+                    final post = _recentPosts[index];
+                    return ListTile(
+                      title: Text(
+                        post['title'] ?? '제목 없음',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      subtitle: Text(
+                        '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      onTap: () {
+                        final homeState = context.findAncestorStateOfType<_HomeScreenState>();
+                        homeState?._onItemTapped(2);
+                      },
+                    );
+                  },
+                  separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.grey),
+                ),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {
