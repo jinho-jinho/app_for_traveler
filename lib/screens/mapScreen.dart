@@ -15,18 +15,22 @@ import 'dart:typed_data'; // Uint8List를 위해 추가
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'dart:typed_data';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
 class MapScreen extends StatefulWidget {
   final String currentUserId; // 현재 사용자 ID
   final String? selectedPlaceId; // 선택된 장소 ID
+  final String? searchKeyword;
+  final String? selectedCategory;
 
   const MapScreen({
     super.key,
     required this.currentUserId,
     this.selectedPlaceId,
+    this.searchKeyword,
+    this.selectedCategory
   });
 
   @override
@@ -95,7 +99,7 @@ class _MapScreenState extends State<MapScreen> {
   BitmapDescriptor? landmarkIcon; // 랜드마크 아이콘 추가
   BitmapDescriptor? currentLocationIcon; // 현재 위치 마커 아이콘
 
-  static const LatLng initialPosition = LatLng(37.5665, 126.9780);
+  static const LatLng initialPosition = LatLng(37.5665, 126.9780); //
 
   // initState: 위젯 초기화, 데이터 초기화 시작
   // 역할: 초기 설정 및 데이터 로드
@@ -103,6 +107,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.searchKeyword != null) {
+      // 예를 들어, searchKeyword를 사용하여 지도 검색 API 호출 또는 마커 표시 로직
+      print('MapScreen received search keyword: ${widget.searchKeyword}');
+      // 여기에 지도 검색을 실행하는 로직을 추가합니다.
+    }
     _isMapVisible = true;
     _initializeData();
   }
@@ -133,6 +142,7 @@ class _MapScreenState extends State<MapScreen> {
     await _fetchData();
   }
 
+
   // _checkLocationPermission: 위치 권한 확인 및 현재 위치 가져오기
   // 역할: 사용자 위치 권한 처리 및 위치 설정
   // 분류: 로직
@@ -141,7 +151,7 @@ class _MapScreenState extends State<MapScreen> {
     LocationPermission permission;
 
     // 위치 서비스 활성화 여부 확인
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    serviceEnabled = await Geolocator.isLocationServiceEnabled(); //
     if (!serviceEnabled) {
       _currentPosition = initialPosition;
       if (mounted) {
@@ -154,9 +164,9 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     // 위치 권한 확인 및 요청
-    permission = await Geolocator.checkPermission();
+    permission = await Geolocator.checkPermission(); //
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission(); //
       if (permission == LocationPermission.denied) {
         _currentPosition = initialPosition;
         if (mounted) {
@@ -182,7 +192,7 @@ class _MapScreenState extends State<MapScreen> {
 
     // 현재 위치 가져오기
     try {
-      Position position = await Geolocator.getCurrentPosition(
+      Position position = await Geolocator.getCurrentPosition( //
         desiredAccuracy: LocationAccuracy.bestForNavigation, // 더 높은 정확도 설정
         timeLimit: const Duration(seconds: 10), // 10초 타임아웃 설정
         forceAndroidLocationManager: true, // 안드로이드에서 위치 관리자 강제 사용
@@ -245,23 +255,55 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  String _getLocalizedCategoryName(String categoryKey, AppLocalizations appLocalizations) {
+    switch (categoryKey) {
+      case '병원':
+        return appLocalizations.hospital;
+      case '약국':
+        return appLocalizations.pharmacy;
+      case '경찰서':
+        return appLocalizations.policeStation;
+      case 'ATM':
+        return appLocalizations.atm;
+      case '은행':
+        return appLocalizations.bank;
+      case '환전소':
+        return appLocalizations.currencyExchange;
+      case '공중 화장실':
+        return appLocalizations.publicRestroom;
+      case '물품 보관함':
+        return appLocalizations.locker;
+      case '휴대폰 충전소':
+        return appLocalizations.phoneChargingStation;
+      case '공공 와이파이':
+        return appLocalizations.publicwifi;
+      case '카페':
+        return appLocalizations.cafe;
+      case '음식점':
+        return appLocalizations.restaurant;
+      case '랜드마크':
+        return appLocalizations.landmark; // app_en.arb에 atm 정의 필요
+      default:
+        return categoryKey; // 매핑되지 않은 경우 원래 키 반환
+    }
+  }
   // 이미지 크기 조정을 위한 유틸리티 메서드
   Future<BitmapDescriptor> resizeIcon(String assetPath, int width, int height) async {
     // 에셋 이미지 로드
-    final ByteData data = await rootBundle.load(assetPath);
-    final Uint8List bytes = data.buffer.asUint8List();
+    final ByteData data = await rootBundle.load(assetPath); //
+    final Uint8List bytes = data.buffer.asUint8List(); //
 
     // 이미지 디코딩
-    final ui.Codec codec = await ui.instantiateImageCodec(bytes, targetWidth: width, targetHeight: height);
-    final ui.FrameInfo frameInfo = await codec.getNextFrame();
-    final ui.Image image = frameInfo.image;
+    final ui.Codec codec = await ui.instantiateImageCodec(bytes, targetWidth: width, targetHeight: height); //
+    final ui.FrameInfo frameInfo = await codec.getNextFrame(); //
+    final ui.Image image = frameInfo.image; //
 
     // 이미지 크기 조정 후 바이트 데이터로 변환
-    final ByteData? resizedByteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    final Uint8List resizedBytes = resizedByteData!.buffer.asUint8List();
+    final ByteData? resizedByteData = await image.toByteData(format: ui.ImageByteFormat.png); //
+    final Uint8List resizedBytes = resizedByteData!.buffer.asUint8List(); //
 
     // BitmapDescriptor 생성
-    return BitmapDescriptor.fromBytes(resizedBytes);
+    return BitmapDescriptor.fromBytes(resizedBytes); //
   }
 
   // _setupMarkerIcons: 각 카테고리별 마커 아이콘 설정
@@ -334,16 +376,16 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: SharedPreferences로 동기화 상태 확인
   // 분류: 로직
   Future<bool> _isKakaoDataSynced() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('kakao_data_synced') ?? false;
+    final prefs = await SharedPreferences.getInstance(); //
+    return prefs.getBool('kakao_data_synced') ?? false; //
   }
 
   // _setKakaoDataSynced: Kakao 데이터 동기화 완료 설정
   // 역할: SharedPreferences에 동기화 상태 저장
   // 분류: 로직
   Future<void> _setKakaoDataSynced() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('kakao_data_synced', true);
+    final prefs = await SharedPreferences.getInstance(); //
+    await prefs.setBool('kakao_data_synced', true); //
     print('데이터 동기화 완료, 동기화 상태 저장됨.');
   }
 
@@ -358,92 +400,92 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     try {
-      bool isSynced = await _isKakaoDataSynced();
+      bool isSynced = await _isKakaoDataSynced(); //
       if (!isSynced || forceSync) {
-        final kakaoApiService = KakaoApiService();
-        final publicWifiService = PublicWifiService();
+        final kakaoApiService = KakaoApiService(); //
+        final publicWifiService = PublicWifiService(); //
 
-        if (mounted) setState(() => _syncProgressMessage = "약국 위치 동기화 중...");
-        final pharmacies = await kakaoApiService.fetchPharmacies();
-        await _syncKakaoDataToFirestore(pharmacies);
+        if (mounted) setState(() => _syncProgressMessage = "약국 위치 동기화 중..."); //
+        final pharmacies = await kakaoApiService.fetchPharmacies(); //
+        await _syncKakaoDataToFirestore(pharmacies); //
         print('약국 동기화 완료: ${pharmacies.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "경찰서/파출소 동기화 중...");
-        final policeStations = await kakaoApiService.fetchPoliceStations();
-        await _syncKakaoDataToFirestore(policeStations);
+        if (mounted) setState(() => _syncProgressMessage = "경찰서/파출소 동기화 중..."); //
+        final policeStations = await kakaoApiService.fetchPoliceStations(); //
+        await _syncKakaoDataToFirestore(policeStations); //
         print('경찰서 동기화 완료: ${policeStations.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "ATM기 위치 동기화 중...");
-        final atms = await kakaoApiService.fetchAtms();
-        await _syncKakaoDataToFirestore(atms);
+        if (mounted) setState(() => _syncProgressMessage = "ATM기 위치 동기화 중..."); //
+        final atms = await kakaoApiService.fetchAtms(); //
+        await _syncKakaoDataToFirestore(atms); //
         print('ATM 동기화 완료: ${atms.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "은행 위치 동기화 중...");
-        final banks = await kakaoApiService.fetchBanks();
-        await _syncKakaoDataToFirestore(banks);
+        if (mounted) setState(() => _syncProgressMessage = "은행 위치 동기화 중..."); //
+        final banks = await kakaoApiService.fetchBanks(); //
+        await _syncKakaoDataToFirestore(banks); //
         print('은행 동기화 완료: ${banks.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "환전소 위치 동기화 중...");
-        final currencyExchanges = await kakaoApiService.fetchCurrencyExchanges();
-        await _syncKakaoDataToFirestore(currencyExchanges);
+        if (mounted) setState(() => _syncProgressMessage = "환전소 위치 동기화 중..."); //
+        final currencyExchanges = await kakaoApiService.fetchCurrencyExchanges(); //
+        await _syncKakaoDataToFirestore(currencyExchanges); //
         print('환전소 동기화 완료: ${currencyExchanges.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "공중 화장실 동기화 중...");
-        final publicToilets = await kakaoApiService.fetchPublicToilets();
-        await _syncKakaoDataToFirestore(publicToilets);
+        if (mounted) setState(() => _syncProgressMessage = "공중 화장실 동기화 중..."); //
+        final publicToilets = await kakaoApiService.fetchPublicToilets(); //
+        await _syncKakaoDataToFirestore(publicToilets); //
         print('공중 화장실 동기화 완료: ${publicToilets.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "물품 보관함 동기화 중...");
-        final lockers = await kakaoApiService.fetchLockers();
-        await _syncKakaoDataToFirestore(lockers);
+        if (mounted) setState(() => _syncProgressMessage = "물품 보관함 동기화 중..."); //
+        final lockers = await kakaoApiService.fetchLockers(); //
+        await _syncKakaoDataToFirestore(lockers); //
         print('물품 보관함 동기화 완료: ${lockers.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "공공 와이파이 동기화 중...");
-        final publicWifis = await publicWifiService.fetchPublicWifis();
-        await _syncKakaoDataToFirestore(publicWifis);
+        if (mounted) setState(() => _syncProgressMessage = "공공 와이파이 동기화 중..."); //
+        final publicWifis = await publicWifiService.fetchPublicWifis(); //
+        await _syncKakaoDataToFirestore(publicWifis); //
         print('공공 와이파이 동기화 완료: ${publicWifis.length}개');
 
         // 새로운 카테고리 동기화
-        if (mounted) setState(() => _syncProgressMessage = "카페 동기화 중...");
-        final cafes = await kakaoApiService.fetchCafes();
-        await _syncKakaoDataToFirestore(cafes);
+        if (mounted) setState(() => _syncProgressMessage = "카페 동기화 중..."); //
+        final cafes = await kakaoApiService.fetchCafes(); //
+        await _syncKakaoDataToFirestore(cafes); //
         print('카페 동기화 완료: ${cafes.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "음식점 동기화 중...");
-        final restaurants = await kakaoApiService.fetchRestaurants();
-        await _syncKakaoDataToFirestore(restaurants);
+        if (mounted) setState(() => _syncProgressMessage = "음식점 동기화 중..."); //
+        final restaurants = await kakaoApiService.fetchRestaurants(); //
+        await _syncKakaoDataToFirestore(restaurants); //
         print('음식점 동기화 완료: ${restaurants.length}개');
 
-        if (mounted) setState(() => _syncProgressMessage = "랜드마크 동기화 중...");
-        final landmarks = await kakaoApiService.fetchLandmarks();
-        await _syncKakaoDataToFirestore(landmarks);
+        if (mounted) setState(() => _syncProgressMessage = "랜드마크 동기화 중..."); //
+        final landmarks = await kakaoApiService.fetchLandmarks(); //
+        await _syncKakaoDataToFirestore(landmarks); //
         print('랜드마크 동기화 완료: ${landmarks.length}개');
 
-        await _setKakaoDataSynced();
+        await _setKakaoDataSynced(); //
       } else {
         print('데이터 동기화 건너뜀. 기존 데이터를 로드합니다.');
       }
 
-      final userPlacesSnapshot = await _firestore.collection('places').get();
+      final userPlacesSnapshot = await _firestore.collection('places').get(); //
       print('Firestore에서 조회된 장소 개수: ${userPlacesSnapshot.docs.length}');
 
       final userPlaces = userPlacesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        List<Review> reviews = [];
+        final data = doc.data(); //
+        List<Review> reviews = []; //
         if (data['reviews'] != null) {
           reviews = (data['reviews'] as List).map((raw) {
-            final reviewData = raw as Map<String, dynamic>;
+            final reviewData = raw as Map<String, dynamic>; //
             return Review(
-              userId: reviewData['userId'] as String,
-              rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
-              comment: reviewData['comment'] as String,
-              likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
-              imageUri: reviewData['imageUri'] as String?,
+              userId: reviewData['userId'] as String, //
+              rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0, //
+              comment: reviewData['comment'] as String, //
+              likes: (reviewData['likes'] as num?)?.toInt() ?? 0, //
+              imageUri: reviewData['imageUri'] as String?, //
             );
           }).toList();
         }
 
-        print('Firestore 장소 데이터: ID ${doc.id}, 이름: ${data['name']}, 주소: ${data['address'] ?? "주소 없음"}');
+        print('Firestore 장소 데이터: ID ${doc.id}, 이름: ${data['name']}, 주소: ${data['address'] ?? "주소 없음"}'); //
 
         return Place(
           id: doc.id,
@@ -584,10 +626,10 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: Firestore에서 사용자 찜 목록 조회
   // 분류: 로직
   Future<bool> _isPlaceFavorited(String placeId) async {
-    DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
+    DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get(); //
     if (userDoc.exists) {
-      List<String> favorites = List<String>.from(userDoc['favorites'] ?? []);
-      return favorites.contains(placeId);
+      List<String> favorites = List<String>.from(userDoc['favorites'] ?? []); //
+      return favorites.contains(placeId); //
     }
     return false;
   }
@@ -597,38 +639,38 @@ class _MapScreenState extends State<MapScreen> {
   // 분류: 로직
   Future<void> _toggleFavorite(String placeId) async {
     try {
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-      List<String> favorites = [];
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(widget.currentUserId).get(); //
+      List<String> favorites = []; //
       if (userDoc.exists) {
-        favorites = List<String>.from(userDoc['favorites'] ?? []);
+        favorites = List<String>.from(userDoc['favorites'] ?? []); //
       }
 
-      bool isFavorited = favorites.contains(placeId);
+      bool isFavorited = favorites.contains(placeId); //
       if (isFavorited) {
-        favorites.remove(placeId);
+        favorites.remove(placeId); //
       } else {
-        favorites.add(placeId);
+        favorites.add(placeId); //
       }
 
       await _firestore.collection('users').doc(widget.currentUserId).update({
         'favorites': favorites,
-      });
+      }); //
 
-      DocumentSnapshot placeDoc = await _firestore.collection('places').doc(placeId).get();
-      List<String> favoritedBy = [];
+      DocumentSnapshot placeDoc = await _firestore.collection('places').doc(placeId).get(); //
+      List<String> favoritedBy = []; //
       if (placeDoc.exists) {
-        favoritedBy = List<String>.from(placeDoc['favoritedBy'] ?? []);
+        favoritedBy = List<String>.from(placeDoc['favoritedBy'] ?? []); //
       }
 
       if (isFavorited) {
-        favoritedBy.remove(widget.currentUserId);
+        favoritedBy.remove(widget.currentUserId); //
       } else {
-        favoritedBy.add(widget.currentUserId);
+        favoritedBy.add(widget.currentUserId); //
       }
 
       await _firestore.collection('places').doc(placeId).update({
         'favoritedBy': favoritedBy,
-      });
+      }); //
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -711,14 +753,14 @@ class _MapScreenState extends State<MapScreen> {
   // 이미지 업로드 함수 (base64 인코딩)
   Future<String?> encodeImageToBase64(File imageFile) async {
     try {
-      final compressed = await FlutterImageCompress.compressWithFile(
-        imageFile.absolute.path,
-        minWidth: 600,
-        quality: 70,
+      final compressed = await FlutterImageCompress.compressWithFile( //
+        imageFile.absolute.path, //
+        minWidth: 600, //
+        quality: 70, //
       );
-      if (compressed == null) return null;
+      if (compressed == null) return null; //
 
-      return base64Encode(compressed);
+      return base64Encode(compressed); //
     } catch (e) {
       print('이미지 인코딩 실패: $e');
       return null;
@@ -737,7 +779,7 @@ class _MapScreenState extends State<MapScreen> {
             minScale: 0.5,
             maxScale: 4.0,
             child: Image.file(
-              File(imagePath),
+              File(imagePath), //
               fit: BoxFit.contain,            // 꽉 차게
             ),
           ),
@@ -758,16 +800,16 @@ class _MapScreenState extends State<MapScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return FutureBuilder<bool>(
-              future: _isPlaceFavorited(place.id),
+              future: _isPlaceFavorited(place.id), //
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                bool isFavorited = snapshot.data ?? false;
+                bool isFavorited = snapshot.data ?? false; //
                 double averageRating = place.reviews.isNotEmpty
                     ? place.reviews.map((r) => r.rating).reduce((a, b) => a + b) / place.reviews.length
-                    : 0.0;
+                    : 0.0; //
 
                 return FractionallySizedBox(
                   heightFactor: 0.4,
@@ -791,7 +833,7 @@ class _MapScreenState extends State<MapScreen> {
                                 color: isFavorited ? Colors.red : Colors.grey,
                               ),
                               onPressed: () async {
-                                await _toggleFavorite(place.id);
+                                await _toggleFavorite(place.id); //
                                 setState(() {});
                               },
                             ),
@@ -955,7 +997,7 @@ class _MapScreenState extends State<MapScreen> {
   // base64 이미지 디코딩 함수
   Widget _buildImageFromBase64(String base64String) {
     try {
-      Uint8List imageBytes = base64Decode(base64String);
+      Uint8List imageBytes = base64Decode(base64String); //
       return Image.memory(
         imageBytes,
         height: 100,
@@ -972,9 +1014,9 @@ class _MapScreenState extends State<MapScreen> {
   // 분류: 로직
   Future<String> _getNickname(String userId) async {
     try {
-      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get(); //
       if (userDoc.exists) {
-        return (userDoc.data() as Map<String, dynamic>)['nickname'] as String? ?? userId;
+        return (userDoc.data() as Map<String, dynamic>)['nickname'] as String? ?? userId; //
       }
       return userId;
     } catch (e) {
@@ -986,8 +1028,8 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: 별점 및 코멘트 입력 UI 제공
   // 분류: 디자인
   void _showAddCommentDialog(Place place) {
-    final TextEditingController commentController = TextEditingController();
-    double newRating = 3.0;
+    final TextEditingController commentController = TextEditingController(); //
+    double newRating = 3.0; //
 
     if (_currentUserNickname == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -996,9 +1038,9 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    // ImagePicker 인스턴스와 선택된 파일 참조
-    final ImagePicker _picker = ImagePicker();
-    XFile? pickedImage;
+    // ImagePicker 인스턴스 및 선택된 파일 참조
+    final ImagePicker _picker = ImagePicker(); //
+    XFile? pickedImage; //
 
     showDialog(
       context: context,
@@ -1044,10 +1086,10 @@ class _MapScreenState extends State<MapScreen> {
                       icon: const Icon(Icons.photo),
                       label: const Text('사진 첨부'),
                       onPressed: () async {
-                        final XFile? image = await _picker.pickImage(
-                          source: ImageSource.gallery,
-                          maxWidth: 800,
-                          imageQuality: 80,
+                        final XFile? image = await _picker.pickImage( //
+                          source: ImageSource.gallery, //
+                          maxWidth: 800, //
+                          imageQuality: 80, //
                         );
                         if (image != null) {
                           setState(() => pickedImage = image);
@@ -1065,13 +1107,13 @@ class _MapScreenState extends State<MapScreen> {
                             context: context,
                             builder: (_) => Dialog(
                               child: InteractiveViewer(
-                                child: Image.file(File(pickedImage!.path)),
+                                child: Image.file(File(pickedImage!.path)), //
                               ),
                             ),
                           );
                         },
                         child: Image.file(
-                          File(pickedImage!.path),
+                          File(pickedImage!.path), //
                           height: 100,
                           width: 100,
                           fit: BoxFit.cover,
@@ -1096,7 +1138,7 @@ class _MapScreenState extends State<MapScreen> {
                       String? uploadedUrl;
 
                       if (pickedImage != null) {
-                        uploadedUrl = await encodeImageToBase64(File(pickedImage!.path));
+                        uploadedUrl = await encodeImageToBase64(File(pickedImage!.path)); //
                         if (uploadedUrl == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('이미지 업로드에 실패했습니다. 다시 시도해주세요.')),
@@ -1113,7 +1155,7 @@ class _MapScreenState extends State<MapScreen> {
                         imageUri: uploadedUrl,
                       );
 
-                      DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get();
+                      DocumentSnapshot doc = await _firestore.collection('places').doc(place.id).get(); //
                       List<Review> reviews = [];
 
                       if (doc.exists && (doc.data() as Map<String, dynamic>)['reviews'] != null) {
@@ -1140,28 +1182,28 @@ class _MapScreenState extends State<MapScreen> {
                         }).toList(),
                       });
 
-                      await _fetchData();
+                      await _fetchData(); //
 
                       // 업데이트 된 코멘트 창 즉시 보이기
-                      await _fetchData();
+                      await _fetchData(); //
                       if (mounted) {
                         Navigator.pop(context); // 다이얼로그 닫기
 
                         // place.id에 해당하는 최신 데이터로 업데이트된 place 찾기
-                        final updateDoc = await _firestore.collection('places').doc(place.id).get();
+                        final updateDoc = await _firestore.collection('places').doc(place.id).get(); //
                         if (updateDoc.exists) {
-                          final data = updateDoc.data() as Map<String, dynamic>;
+                          final data = updateDoc.data() as Map<String, dynamic>; //
 
-                          List<Review> updatedReviews = [];
+                          List<Review> updatedReviews = []; //
                           if (data['reviews'] != null) {
                             updatedReviews = (data['reviews'] as List).map((reviewData) {
-                              final r = reviewData as Map<String, dynamic>;
+                              final r = reviewData as Map<String, dynamic>; //
                               return Review(
-                                userId: r['userId'] as String,
-                                rating: (r['rating'] as num?)?.toDouble() ?? 0.0,
-                                comment: r['comment'] as String,
-                                likes: (r['likes'] as num?)?.toInt() ?? 0,
-                                imageUri: r['imageUri'] as String?,
+                                userId: r['userId'] as String, //
+                                rating: (r['rating'] as num?)?.toDouble() ?? 0.0, //
+                                comment: r['comment'] as String, //
+                                likes: (r['likes'] as num?)?.toInt() ?? 0, //
+                                imageUri: r['imageUri'] as String?, //
                               );
                             }).toList();
                           }
@@ -1199,6 +1241,8 @@ class _MapScreenState extends State<MapScreen> {
   // 분류: 디자인
   void _showAddPlaceDialog() {
     String? selectedCategory;
+    // Access AppLocalizations for localized strings
+    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
@@ -1206,18 +1250,21 @@ class _MapScreenState extends State<MapScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('새 장소 추가'),
+              title: Text(appLocalizations.addNewPlaceTitle), // Localized string for '새 장소 추가'
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButton<String>(
-                      hint: const Text('카테고리 선택'),
+                      hint: Text(appLocalizations.selectCategoryHint), // Localized string for '카테고리 선택'
                       value: selectedCategory,
-                      items: _categoryEnabled.keys.map((category) {
+                      items: _categoryEnabled.keys.map((categoryKey) {
                         return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
+                          value: categoryKey,
+                          // You might also want to localize the category names themselves
+                          // if they are displayed to the user and need translation.
+                          // For simplicity, we are using the raw category key here.
+                          child: Text(categoryKey),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -1233,11 +1280,11 @@ class _MapScreenState extends State<MapScreen> {
                         Navigator.pop(context);
                         _showLocationPickerDialog(
                           selectedCategory!,
-                          selectedCategory!,
+                          selectedCategory!, // Pass category name, potentially localized
                         );
                       }
                           : null,
-                      child: const Text('위치 선택'),
+                      child: Text(appLocalizations.selectLocationButton), // Localized string for '위치 선택'
                     ),
                   ],
                 ),
@@ -1245,7 +1292,7 @@ class _MapScreenState extends State<MapScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('취소'),
+                  child: Text(appLocalizations.cancelButton), // Localized string for '취소'
                 ),
               ],
             );
@@ -1259,15 +1306,18 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: 지도에서 위치 선택 UI 제공 (현재 위치에서 시작)
   // 분류: 디자인
   void _showLocationPickerDialog(String category, String subcategory) {
-    // 현재 위치가 없으면 initialPosition 사용
+    // Access AppLocalizations for localized strings
+    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+
+    // Use current position if available, otherwise use initialPosition
     LatLng initialMarkerPosition = _currentPosition ?? initialPosition;
-    LatLng selectedPosition = initialMarkerPosition;
+    LatLng selectedPosition = initialMarkerPosition; // Initialize with initialMarkerPosition
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('위치 선택'),
+          title: Text(appLocalizations.selectLocationTitle), // Localized string for '위치 선택'
           content: SizedBox(
             height: 400,
             width: 300,
@@ -1275,24 +1325,34 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 GoogleMap(
                   initialCameraPosition: CameraPosition(
-                    target: initialMarkerPosition, // 현재 위치에서 시작
+                    target: initialMarkerPosition, // Start at current/initial position
                     zoom: 15,
                   ),
-                  onMapCreated: (controller) {},
+                  onMapCreated: (controller) {
+                    // You might want to store the controller if you need to programmatically control the map
+                  },
                   onCameraMove: (position) {
+                    // Update selectedPosition as the camera moves
                     selectedPosition = position.target;
                   },
                   markers: {
+                    // Display a single marker at the initial position
                     Marker(
                       markerId: const MarkerId('selected_position'),
                       position: initialMarkerPosition,
+                      draggable: true, // Allow user to drag the marker
+                      onDragEnd: (newPosition) {
+                        // Update selectedPosition if the marker is dragged
+                        selectedPosition = newPosition;
+                      },
                     ),
                   },
                 ),
+                // This icon centers on the map, indicating the chosen point
                 const Center(
                   child: Icon(
-                    Icons.add,
-                    size: 30,
+                    Icons.add_location_alt, // Changed to a more relevant icon
+                    size: 40, // Increased size for better visibility
                     color: Colors.red,
                   ),
                 ),
@@ -1302,14 +1362,14 @@ class _MapScreenState extends State<MapScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
+              child: Text(appLocalizations.cancelButton), // Localized string for '취소'
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 _showAddPlaceDetailsDialog(category, subcategory, selectedPosition);
               },
-              child: const Text('확인'),
+              child: Text(appLocalizations.confirmButton), // Localized string for '확인'
             ),
           ],
         );
@@ -1321,9 +1381,9 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: 장소 이름, 무료/유료 여부, 주소 입력 UI 제공
   // 분류: 디자인
   void _showAddPlaceDetailsDialog(String category, String subcategory, LatLng position) {
-    final nameController = TextEditingController();
+    final nameController = TextEditingController(); //
     final addressController = TextEditingController(); // 주소 입력 컨트롤러 추가
-    bool isFree = true;
+    bool isFree = true; //
 
     showDialog(
       context: context,
@@ -1372,8 +1432,8 @@ class _MapScreenState extends State<MapScreen> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final name = nameController.text;
-                    final address = addressController.text;
+                    final name = nameController.text; //
+                    final address = addressController.text; //
                     if (name.isEmpty || address.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('장소 이름과 주소를 모두 입력해주세요.')),
@@ -1642,42 +1702,84 @@ class _MapScreenState extends State<MapScreen> {
     return markers;
   }
 
-void _showSearchDialog() {
-  showDialog(
-    context: context,
-    builder: (context) {
-      String searchText = '';
-      List<Place> searchResults = [];
-      bool isSearching = false;
+// _performMapSearch 함수 추가: 검색을 수행하고 지도에 표시하는 함수
+  Future<void> _performMapSearch(String query) async {
+    print("지도에서 '$query' 검색을 시작합니다!"); //
+    if (mounted) {
+      setState(() {
+        _isLoading = true; // 검색 중 로딩 표시
+        _syncProgressMessage = "'$query' 검색 중...";
+      });
+    }
 
-      return StatefulBuilder(
-        builder: (context, setState) {
-          Future<void> _handleSearch(String keyword) async {
-            if (keyword.trim().isEmpty) return;
+    try {
+      // 기존 searchPlacesFromFirestore 함수를 활용하여 Firestore에서 검색
+      final results = await searchPlacesFromFirestore(query); //
 
-            setState(() => isSearching = true);
-            try {
-              final results = await searchPlacesFromFirestore(keyword);
-              searchResults = results;
-            } catch (e) {
-              searchResults = [];
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('검색 실패: $e')),
-              );
-            } finally {
-              setState(() => isSearching = false);
+      if (results.isNotEmpty) {
+        // 검색 결과가 있다면 첫 번째 결과로 지도 이동 및 바텀시트 표시
+        final firstPlace = results.first;
+        await _moveToSelectedPlace(firstPlace.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("'$query'에 대한 검색 결과가 지도에 표시되었습니다: ${firstPlace.name}")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("'$query'에 대한 검색 결과가 없습니다.")),
+        );
+      }
+    } catch (e) {
+      print("지도 검색 실패: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("지도 검색 중 오류 발생: $e")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false; // 검색 완료 후 로딩 해제
+          _syncProgressMessage = "데이터 동기화 완료"; // 메시지 초기화
+        });
+      }
+    }
+  }
+
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String searchText = '';
+        List<Place> searchResults = [];
+        bool isSearching = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            Future<void> _handleSearch(String keyword) async {
+              if (keyword.trim().isEmpty) return;
+
+              setState(() => isSearching = true);
+              try {
+                final results = await searchPlacesFromFirestore(keyword); //
+                searchResults = results;
+              } catch (e) {
+                searchResults = [];
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('검색 실패: $e')),
+                );
+              } finally {
+                setState(() => isSearching = false);
+              }
             }
-          }
 
-          final bool hasResults = searchResults.isNotEmpty || isSearching;
+            final bool hasResults = searchResults.isNotEmpty || isSearching;
 
-          return AlertDialog(
-            content: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              height: hasResults ? 500 : 100,
-              width: 500,
-              child: // ...중략...
+            return AlertDialog(
+              content: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                height: hasResults ? 500 : 100,
+                width: 500,
+                child: // ...중략...
                 Column(
                   children: [
                     Row(
@@ -1687,7 +1789,7 @@ void _showSearchDialog() {
                             autofocus: true,
                             textInputAction: TextInputAction.search,
                             decoration: const InputDecoration(
-                              hintText: 'Enter Place Name',
+                              hintText: '장소 이름 또는 주소를 입력하세요', // 힌트 텍스트 변경
                               prefixIcon: Icon(Icons.search),
                             ),
                             onSubmitted: (value) {
@@ -1702,7 +1804,7 @@ void _showSearchDialog() {
                         const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () => _handleSearch(searchText),
-                          child: const Text('Search'),
+                          child: const Text('검색'), // 텍스트 변경
                         ),
                       ],
                     ),
@@ -1712,38 +1814,38 @@ void _showSearchDialog() {
                       child: isSearching
                           ? const Center(child: CircularProgressIndicator())
                           : searchText.isEmpty
-                              ? const SizedBox() // 검색 전에는 아무것도 안 보임
-                              : searchResults.isEmpty
-                                  ? const Center(child: Text('No search results found.'))
-                                  : ListView.builder(
-                                      itemCount: searchResults.length,
-                                      itemBuilder: (context, index) {
-                                        final place = searchResults[index];
-                                        return _buildSearchResultCard(
-                                          place,
-                                          () async {
-                                            Navigator.pop(context);
-                                            await _moveToSelectedPlace(place.id);
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+                          ? const SizedBox() // 검색 전에는 아무것도 안 보임
+                          : searchResults.isEmpty
+                          ? const Center(child: Text('검색 결과가 없습니다.')) // 텍스트 변경
+                          : ListView.builder(
+                        itemCount: searchResults.length,
+                        itemBuilder: (context, index) {
+                          final place = searchResults[index];
+                          return _buildSearchResultCard(
+                            place,
+                                () async {
+                              Navigator.pop(context);
+                              await _moveToSelectedPlace(place.id); //
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('닫기'), // 텍스트 변경
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
 
   Widget _buildSearchResultCard(Place place, VoidCallback onTap) {
@@ -1782,6 +1884,8 @@ void _showSearchDialog() {
   // 분류: 디자인
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('지도'),
@@ -1789,7 +1893,7 @@ void _showSearchDialog() {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () async {
-              await _fetchData(forceSync: true);
+              await _fetchData(forceSync: true); //
             },
             tooltip: '데이터 동기화',
           ),
@@ -1799,26 +1903,26 @@ void _showSearchDialog() {
         children: [
           _isMapVisible
               ? GoogleMap(
-            onMapCreated: _onMapCreated,
+            onMapCreated: _onMapCreated, //
             initialCameraPosition: const CameraPosition(
               target: initialPosition,
               zoom: 12,
             ),
-            markers: _createMarkers(),
-            myLocationEnabled: _locationPermissionGranted,
-            myLocationButtonEnabled: true,
+            markers: _createMarkers(), //
+            myLocationEnabled: _locationPermissionGranted, //
+            myLocationButtonEnabled: true, //
           )
               : const Center(child: Text('지도 로드 대기 중...')),
-              Positioned(
-                bottom: 16, 
-                left: 16,   
-                child: FloatingActionButton(
-                  heroTag: 'search_button', 
-                  onPressed: _showSearchDialog,
-                  child: const Icon(Icons.search),
-                  tooltip: '장소 검색',
-                ),
-              ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            child: FloatingActionButton(
+              heroTag: 'search_button',
+              onPressed: _showSearchDialog, //
+              child: const Icon(Icons.search),
+              tooltip: '장소 검색',
+            ),
+          ),
 
           Positioned(
             top: 10,
@@ -1827,16 +1931,21 @@ void _showSearchDialog() {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _categoryEnabled.keys.map((category) {
+                children: _categoryEnabled.keys.map((categoryKey) { // 'category'를 'categoryKey'로 변경하여 명확성을 높임
+                  // 여기서 지역화 함수를 호출합니다.
+                  String localizedCategoryName = _getLocalizedCategoryName(categoryKey, appLocalizations);
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: ChoiceChip(
-                      label: Text(category),
-                      selected: _categoryEnabled[category]!,
+                      label: Text(localizedCategoryName), // 지역화된 이름을 사용
+                      selected: _categoryEnabled[categoryKey]!,
                       onSelected: (selected) {
                         setState(() {
-                          _categoryEnabled[category] = selected;
+                          _categoryEnabled[categoryKey] = selected;
                         });
+                        // 여기에 필터링 함수를 호출할 수도 있습니다.
+                        // _filterMarkersByCategory(categoryKey);
                       },
                     ),
                   );
@@ -1854,17 +1963,18 @@ void _showSearchDialog() {
                   Text(_syncProgressMessage),
                 ],
               ),
-            ),
+            )
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddPlaceDialog,
+        onPressed: _showAddPlaceDialog, //
         child: const Icon(Icons.add),
         tooltip: '장소 추가',
       ),
     );
   }
 }
+
 Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
   final firestore = FirebaseFirestore.instance;
 
@@ -1872,7 +1982,7 @@ Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
 
   return querySnapshot.docs
       .where((doc) =>
-          (doc.data()['name'] as String?)?.toLowerCase().contains(keyword.toLowerCase()) ?? false)
+  (doc.data()['name'] as String?)?.toLowerCase().contains(keyword.toLowerCase()) ?? false)
       .map((doc) {
     final data = doc.data();
 

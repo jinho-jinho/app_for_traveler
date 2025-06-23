@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'editPersonalScheduleScreen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PersonalScheduleDetailScreen extends StatefulWidget {
   final String userId;
@@ -22,6 +23,8 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
   bool _isLoading = true;
 
   Future<void> _loadSchedule() async {
+    final appLocalizations = AppLocalizations.of(context)!;
+
     setState(() => _isLoading = true);
     try {
       final doc = await FirebaseFirestore.instance
@@ -44,23 +47,26 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
         if (mounted) Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('불러오기 실패: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.loadFailed(e.toString())))); // 다국어 적용
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _deleteSchedule() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('일정 삭제'),
-        content: const Text('정말 이 일정을 삭제하시겠습니까?'),
+        title: Text(appLocalizations.deleteScheduleTitle), // 다국어 적용
+        content: Text(appLocalizations.confirmDeleteSchedule), // 다국어 적용
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(appLocalizations.cancelButton)), // 다국어 적용 (재사용)
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('삭제', style: TextStyle(color: Colors.red))),
+              child: Text(appLocalizations.deleteButton, style: const TextStyle(color: Colors.red))), // 다국어 적용
         ],
       ),
     );
@@ -75,12 +81,12 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
           .delete();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('일정이 삭제되었습니다.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.scheduleDeleted))); // 다국어 적용
         Navigator.pop(context, true); // 삭제 후 이전 화면으로 true 반환
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.deleteFailed(e.toString())))); // 다국어 적용
       }
     }
   }
@@ -93,9 +99,13 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
 
   @override
   Widget build(BuildContext context) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('개인 일정 상세'),
+        title: Text(appLocalizations.personalScheduleDetailTitle), // 다국어 적용
         backgroundColor: Colors.grey[100],
         actions: _scheduleData == null
             ? null
@@ -121,13 +131,13 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'edit',
-                child: Text('수정'),
+                child: Text(appLocalizations.editButton), // 다국어 적용
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
-                child: Text('삭제', style: TextStyle(color: Colors.red)),
+                child: Text(appLocalizations.deleteButton, style: const TextStyle(color: Colors.red)), // 다국어 적용
               ),
             ],
           ),
@@ -137,7 +147,7 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _scheduleData == null
-          ? const Center(child: Text('일정을 불러올 수 없습니다.'))
+          ? Center(child: Text(appLocalizations.cannotLoadSchedule)) // 다국어 적용
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -152,21 +162,21 @@ class _PersonalScheduleDetailScreenState extends State<PersonalScheduleDetailScr
             ),
             const SizedBox(height: 12),
             Text(
-              '📍: ${_scheduleData!['destination'] ?? ''}',
+              '📍: ${_scheduleData!['destination'] ?? ''}', // 이모지는 유지
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              '🗓️: ${DateFormat('yyyy.MM.dd').format(_scheduleData!['startDate'])} - ${DateFormat('yyyy.MM.dd').format(_scheduleData!['endDate'])}',
+              '🗓️: ${DateFormat('yyyy.MM.dd').format(_scheduleData!['startDate'])} - ${DateFormat('yyyy.MM.dd').format(_scheduleData!['endDate'])}', // 이모지는 유지
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
-            const Text(
-              '부가 설명: ',
-              style: TextStyle(fontSize: 16),
+            Text(
+              appLocalizations.additionalDescriptionPrefix, // 다국어 적용
+              style: const TextStyle(fontSize: 16),
             ),
             Text(
-              _scheduleData!['description'] ?? '없음',
+              _scheduleData!['description'] ?? appLocalizations.none, // 다국어 적용
               style: const TextStyle(fontSize: 16),
             ),
           ],

@@ -427,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(appLocalizations.selectLanguage), // Localized
-          //content: const LanguageSelectionWidget(), // 언어 선택 위젯 삽입
+          content: const LanguageSelectionWidget(), // 언어 선택 위젯 삽입
           actions: <Widget>[
             TextButton(
               onPressed: () {

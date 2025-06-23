@@ -102,6 +102,8 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSwatch().copyWith(
           primary: Colors.grey, // 주요 색상 회색
         ),
+        // primarySwatch 대신 colorScheme를 사용하며, 기존 primarySwatch는 제거해도 됩니다.
+        // theme: ThemeData(primarySwatch: Colors.blue), // 이 줄은 위에 colorScheme로 대체됨
       ),
       locale: _locale,
       home: _currentUserId == null
@@ -113,10 +115,15 @@ class _MyAppState extends State<MyApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // supportedLocales는 앱이 지원하는 모든 언어를 나열합니다.
+      // Locale('ko', 'KR') 또는 Locale('en', 'US')와 같이 국가 코드까지 명시하는 것이 더 정확합니다.
       supportedLocales: const [
-        Locale('ko', 'KR'),
-        Locale('en', 'US'),
+        Locale('ko', 'KR'), // 한국어
+        Locale('en', 'US'), // 영어
+        // Locale('ja', 'JP'), // 일본어 등 추가 가능
       ],
+      // localeResolutionCallback은 더 이상 필요하지 않습니다.
+      // _locale 값이 명시적으로 설정되어 앱의 언어를 결정하기 때문입니다.
     );
   }
 }
