@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+// ──────────────────────────────────────────────────────────────────
+// AppLocalizations 임포트 추가
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// ──────────────────────────────────────────────────────────────────
 
 // 게시물 상세 화면 StatefulWidget
 // 역할: 게시물 내용 및 댓글/대댓글 표시 및 관리
@@ -36,465 +40,579 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _commentController = TextEditingController();
   final Map<String, TextEditingController> _replyControllers = {};
-  List<Map<String, dynamic>> _comments = []; // 댓글 및 대댓글 데이터
-  bool _isLoading = true; // 로딩 상태
+  List<Map<String, dynamic>> _comments = []; // 댓글 목록
 
-  // initState: 위젯 초기화, 댓글 데이터 로드
-  // 역할: 초기 댓글 데이터 가져오기
-  // 분류: 로직
+  String? _editingCommentId; // 수정 중인 댓글 ID
+  String? _replyingToCommentId; // 대댓글 작성 중인 댓글 ID
+
   @override
   void initState() {
     super.initState();
-    _fetchComments();
+    _loadComments(); // 댓글 로드
   }
 
-  // dispose: 컨트롤러 및 리소스 정리
-  // 역할: 텍스트 컨트롤러 해제
-  // 분류: 로직
-  @override
-  void dispose() {
-    _commentController.dispose();
-    _replyControllers.values.forEach((controller) => controller.dispose());
-    _replyControllers.clear();
-    super.dispose();
-  }
-
-  // _fetchComments: Firestore에서 댓글 및 대댓글 데이터 가져오기
-  // 역할: 게시물의 댓글과 대댓글 로드 및 상태 업데이트
-  // 분류: 로직
-  Future<void> _fetchComments() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+  // _loadComments: Firestore에서 댓글 데이터 가져오기
+  Future<void> _loadComments() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
     try {
-      QuerySnapshot commentSnapshot = await _firestore
+      final snapshot = await _firestore
+          .collection('posts')
+          .doc(widget.postId)
           .collection('comments')
-          .where('postId', isEqualTo: widget.postId)
-          .orderBy('createdAt', descending: true)
+          .orderBy('createdAt', descending: false)
           .get();
 
-      List<Map<String, dynamic>> comments = [];
-      for (var doc in commentSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-
-        QuerySnapshot replySnapshot = await _firestore
-            .collection('replies')
-            .where('commentId', isEqualTo: doc.id)
-            .orderBy('createdAt', descending: true)
-            .get();
-
-        List<Map<String, dynamic>> replies = replySnapshot.docs.map((replyDoc) {
-          final replyData = replyDoc.data() as Map<String, dynamic>;
-          return {
-            'id': replyDoc.id,
-            'content': replyData['content'] as String? ?? '내용 없음',
-            'authorId': replyData['authorId'] as String? ?? '알 수 없음',
-            'authorNickname': replyData['authorNickname'] as String? ?? '알 수 없음',
-            'createdAt': (replyData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          };
-        }).toList();
-
-        comments.add({
+      final List<Map<String, dynamic>> fetchedComments = [];
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final userDoc = await _firestore.collection('users').doc(data['userId']).get();
+        final comment = {
           'id': doc.id,
-          'content': data['content'] as String? ?? '내용 없음',
-          'authorId': data['authorId'] as String? ?? '알 수 없음',
-          'authorNickname': data['authorNickname'] as String? ?? '알 수 없음',
-          'createdAt': (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          'replies': replies,
-        });
-      }
-
-      setState(() {
-        _comments = comments;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('댓글 목록을 불러오는 데 실패했습니다. 에러: $e')),
-        );
-      }
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // _addComment: Firestore에 새 댓글 추가
-  // 역할: 댓글 입력 처리 및 저장
-  // 분류: 로직
-  Future<void> _addComment() async {
-    if (_commentController.text.isNotEmpty) {
-      try {
-        final newDoc = await _firestore.collection('comments').add({
-          'postId': widget.postId,
-          'content': _commentController.text,
-          'authorId': widget.currentUserId,
-          'authorNickname': widget.currentUserNickname ?? widget.currentUserId,
-          'createdAt': Timestamp.now(),
-        });
-
-        final newData = await newDoc.get();
-        final newComment = {
-          'id': newDoc.id,
-          'content': newData['content'],
-          'authorId': newData['authorId'],
-          'authorNickname': newData['authorNickname'],
-          'createdAt': (newData['createdAt'] as Timestamp).toDate(),
-          'replies': [],
+          'userId': data['userId'],
+          'userNickname': userDoc.exists ? userDoc.data()!['nickname'] : appLocalizations.unknown, // 다국어 적용
+          'content': data['content'],
+          'createdAt': (data['createdAt'] as Timestamp).toDate(),
+          'replies': [], // 대댓글 목록 초기화
         };
 
-        if (mounted) {
-          setState(() {
-            _comments.insert(0, newComment);
+        // 대댓글 로드
+        final repliesSnapshot = await _firestore
+            .collection('posts')
+            .doc(widget.postId)
+            .collection('comments')
+            .doc(doc.id)
+            .collection('replies')
+            .orderBy('createdAt', descending: false)
+            .get();
+
+        final List<Map<String, dynamic>> fetchedReplies = [];
+        for (var replyDoc in repliesSnapshot.docs) {
+          final replyData = replyDoc.data();
+          final replyUserDoc = await _firestore.collection('users').doc(replyData['userId']).get();
+          fetchedReplies.add({
+            'id': replyDoc.id,
+            'userId': replyData['userId'],
+            'userNickname': replyUserDoc.exists ? replyUserDoc.data()!['nickname'] : appLocalizations.unknown, // 다국어 적용
+            'content': replyData['content'],
+            'createdAt': (replyData['createdAt'] as Timestamp).toDate(),
           });
-          _commentController.clear();
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('댓글 저장 중 오류가 발생했습니다. 에러: $e')),
-          );
-        }
+        comment['replies'] = fetchedReplies;
+        fetchedComments.add(comment);
       }
-    } else {
+
+      setState(() {
+        _comments = fetchedComments;
+      });
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('댓글 내용을 입력해주세요.')),
+          SnackBar(content: Text(appLocalizations.failedToLoadComments(e.toString()))), // 다국어 적용
         );
       }
     }
   }
 
-  // _addReply: Firestore에 대댓글 추가
-  // 역할: 대댓글 입력 처리 및 저장
-  // 분류: 로직
-  Future<void> _addReply(String commentId) async {
-    final replyController = _replyControllers[commentId];
-    if (replyController != null && replyController.text.isNotEmpty) {
-      try {
-        await _firestore.collection('replies').add({
-          'commentId': commentId,
-          'content': replyController.text,
-          'authorId': widget.currentUserId,
-          'authorNickname': widget.currentUserNickname ?? widget.currentUserId,
-          'createdAt': Timestamp.now(),
+  // _addComment: 새 댓글 추가
+  Future<void> _addComment() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    if (_commentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(appLocalizations.commentEmptyWarning)), // 다국어 적용
+      );
+      return;
+    }
+
+    try {
+      final newCommentRef = await _firestore.collection('posts').doc(widget.postId).collection('comments').add({
+        'userId': widget.currentUserId,
+        'content': _commentController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 댓글 작성 성공 시 작성자에게 알림 추가 (자신이 작성한 댓글에는 알림 X)
+      if (widget.currentUserId != widget.authorId) {
+        await _firestore.collection('users').doc(widget.authorId).collection('notifications').add({
+          'type': 'comment',
+          'postId': widget.postId,
+          'postTitle': widget.title,
+          'postContent': widget.content,
+          'postAuthorId': widget.authorId,
+          'postAuthorNickname': widget.authorNickname,
+          'postCreatedAt': widget.createdAt,
+          'commentId': newCommentRef.id,
+          'nickname': widget.currentUserNickname ?? appLocalizations.unknown, // 다국어 적용 (재사용)
+          'message': '${widget.currentUserNickname ?? appLocalizations.unknown} 님이 회원님의 게시물에 댓글을 달았습니다.', // 다국어 적용
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
         });
-        replyController.clear();
-        _fetchComments();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('대댓글 저장 중 오류가 발생했습니다. 에러: $e')),
-          );
-        }
       }
-    } else {
+
+      _commentController.clear();
+      await _loadComments(); // 댓글 새로고침
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('대댓글 내용을 입력해주세요.')),
+          SnackBar(content: Text(appLocalizations.commentAddedSuccess)), // 다국어 적용
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToAddComment(e.toString()))), // 다국어 적용
         );
       }
     }
   }
 
-  // 댓글, 대댓글 삭제
-  Future<void> deleteCommentWithReplies(String postId, String commentId) async {
-    try {
-      final repliesSnapshot = await _firestore
-          .collection('replies')
-          .where('commentId', isEqualTo: commentId)
-          .get();
+  // _editComment: 댓글 수정 시작
+  void _editComment(String commentId, String currentContent) {
+    setState(() {
+      _editingCommentId = commentId;
+      _commentController.text = currentContent;
+    });
+  }
 
-      for (var replyDoc in repliesSnapshot.docs) {
-        await _firestore.collection('replies').doc(replyDoc.id).delete();
+  // _updateComment: 댓글 수정 완료
+  Future<void> _updateComment() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    if (_editingCommentId == null || _commentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(appLocalizations.commentEmptyWarning)), // 다국어 적용 (재사용)
+      );
+      return;
+    }
+
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(_editingCommentId)
+          .update({'content': _commentController.text.trim()});
+
+      setState(() {
+        _editingCommentId = null;
+        _commentController.clear();
+      });
+      await _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.commentUpdatedSuccess)), // 다국어 적용
+        );
       }
-
-      await _firestore.collection('comments').doc(commentId).delete();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('댓글 삭제 중 오류가 발생했습니다.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToUpdateComment(e.toString()))), // 다국어 적용
+        );
+      }
     }
   }
 
-  // 대댓글 삭제
-  Future<void> deleteReply(String postId, String commentId, String replyId) async {
+  // _deleteComment: 댓글 삭제
+  Future<void> _deleteComment(String commentId) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.deleteCommentTitle), // 다국어 적용
+          content: Text(appLocalizations.confirmDeleteComment), // 다국어 적용
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.deleteButton), // 다국어 적용
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
     try {
-      await _firestore.collection('replies').doc(replyId).delete();
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .delete();
+
+      await _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.commentDeletedSuccess)), // 다국어 적용
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('대댓글 삭제 중 오류가 발생했습니다.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToDeleteComment(e.toString()))), // 다국어 적용
+        );
+      }
     }
   }
 
-  // build: 게시물 상세 및 댓글 UI 렌더링
-  // 역할: 게시물 정보, 댓글 목록, 입력 필드 표시
-  // 분류: 디자인
+  // _addReply: 대댓글 추가
+  Future<void> _addReply(String commentId) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final TextEditingController replyController = _replyControllers[commentId]!;
+    if (replyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(appLocalizations.replyEmptyWarning)), // 다국어 적용
+      );
+      return;
+    }
+
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .add({
+        'userId': widget.currentUserId,
+        'content': replyController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      replyController.clear();
+      setState(() {
+        _replyingToCommentId = null; // 대댓글 입력창 닫기
+      });
+      await _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.replyAddedSuccess)), // 다국어 적용
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToAddReply(e.toString()))), // 다국어 적용
+        );
+      }
+    }
+  }
+
+  // _editReply: 대댓글 수정 시작
+  void _editReply(String commentId, String replyId, String currentContent) {
+    setState(() {
+      _replyingToCommentId = commentId; // 대댓글 입력창 열기
+      _replyControllers.putIfAbsent(commentId, () => TextEditingController()).text = currentContent;
+      // 대댓글 수정은 별도의 editingReplyId 상태를 관리하지 않고, 단순히 입력창에 값을 채워넣는 방식으로 진행.
+      // 실제 업데이트는 _updateReply 함수에서 처리.
+    });
+  }
+
+
+  // _updateReply: 대댓글 수정 완료 (실제 Firestore 업데이트)
+  Future<void> _updateReply(String commentId, String replyId) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final TextEditingController replyController = _replyControllers[commentId]!;
+    if (replyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(appLocalizations.replyEmptyWarning)), // 다국어 적용 (재사용)
+      );
+      return;
+    }
+
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .doc(replyId)
+          .update({'content': replyController.text.trim()});
+
+      replyController.clear();
+      setState(() {
+        _replyingToCommentId = null; // 대댓글 입력창 닫기
+      });
+      await _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.replyUpdatedSuccess)), // 다국어 적용
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToUpdateReply(e.toString()))), // 다국어 적용
+        );
+      }
+    }
+  }
+
+
+  // _deleteReply: 대댓글 삭제
+  Future<void> _deleteReply(String commentId, String replyId) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.deleteReplyTitle), // 다국어 적용
+          content: Text(appLocalizations.confirmDeleteReply), // 다국어 적용
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.deleteButton), // 다국어 적용 (재사용)
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
+    try {
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .doc(commentId)
+          .collection('replies')
+          .doc(replyId)
+          .delete();
+
+      await _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.replyDeletedSuccess)), // 다국어 적용
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(appLocalizations.failedToDeleteReply(e.toString()))), // 다국어 적용
+        );
+      }
+    }
+  }
+
+  // UI 구성
   @override
   Widget build(BuildContext context) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
     return Scaffold(
       appBar: AppBar(
-        title: const Text('게시물 상세'),
-        elevation: 0,
+        title: Text(appLocalizations.postDetailTitle), // 다국어 적용
         backgroundColor: Colors.white,
+        elevation: 0,
         titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Column(
         children: [
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.grey,
-                          child: Icon(Icons.person, color: Colors.white, size: 20),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.authorNickname,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                            ),
-                            Text(
-                              DateFormat('yyyy-MM-dd HH:mm').format(widget.createdAt),
-                              style: const TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      widget.content,
-                      style: const TextStyle(fontSize: 16, height: 1.5),
-                    ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const Text(
-                      '댓글',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    _comments.isEmpty
-                        ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Center(child: Text('댓글이 없습니다.', style: TextStyle(color: Colors.grey))),
-                    )
-                        : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = _comments[index];
-                        final commentId = comment['id'] as String;
-                        if (!_replyControllers.containsKey(commentId)) {
-                          _replyControllers[commentId] = TextEditingController();
-                        }
-                        final replies = comment['replies'] as List<dynamic>;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${appLocalizations.authorLabel}: ${widget.authorNickname} | ${DateFormat('yyyy.MM.dd HH:mm').format(widget.createdAt)}', // 다국어 적용
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const Divider(height: 30),
+                  Text(
+                    widget.content,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    appLocalizations.commentsTitle, // 다국어 적용
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  // 댓글 목록
+                  _comments.isEmpty
+                      ? Center(child: Text(appLocalizations.noCommentsYet)) // 다국어 적용
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _comments.length,
+                    itemBuilder: (context, index) {
+                      final comment = _comments[index];
+                      // 대댓글 컨트롤러 초기화 (없으면 새로 생성)
+                      _replyControllers.putIfAbsent(comment['id'], () => TextEditingController());
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: Colors.grey,
-                                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                                  Text(
+                                    comment['userNickname'],
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
+                                  Text(
+                                    DateFormat('yyyy.MM.dd HH:mm').format(comment['createdAt']),
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Text(comment['content']),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: ButtonBar(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _replyingToCommentId = comment['id'];
+                                        });
+                                      },
+                                      child: Text(appLocalizations.replyButton), // 다국어 적용
+                                    ),
+                                    if (comment['userId'] == widget.currentUserId) ...[
+                                      TextButton(
+                                        onPressed: () => _editComment(comment['id'], comment['content']),
+                                        child: Text(appLocalizations.editButton), // 다국어 적용
+                                      ),
+                                      TextButton(
+                                        onPressed: () => _deleteComment(comment['id']),
+                                        child: Text(appLocalizations.deleteButton), // 다국어 적용
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              // 대댓글 목록
+                              if (comment['replies'] != null && comment['replies'].isNotEmpty)
+                                ...comment['replies'].map<Widget>((reply) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(left: 20.0, top: 8.0),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              comment['authorNickname'] ?? '알 수 없음',
-                                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                              '${appLocalizations.replyPrefix} ${reply['userNickname']}', // 다국어 적용
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                             ),
-                                            const SizedBox(width: 8),
                                             Text(
-                                              DateFormat('yyyy-MM-dd HH:mm').format(comment['createdAt'] as DateTime),
-                                              style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                            ),
-                                            const Spacer(),
-
-                                            // 댓글 삭제
-                                            if (comment['authorId'] == widget.currentUserId)
-                                              IconButton(
-                                                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                                                onPressed: () async {
-                                                  final confirm = await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (context) => AlertDialog(
-                                                      title: const Text('댓글 삭제'),
-                                                      content: const Text('이 댓글과 대댓글을 모두 삭제하시겠습니까?'),
-                                                      actions: [
-                                                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                                                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (confirm == true) {
-                                                    await deleteCommentWithReplies(widget.postId, commentId);
-                                                    _fetchComments();
-                                                  }
-                                                },
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          comment['content'] ?? '내용 없음',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: TextField(
-                                                controller: _replyControllers[commentId],
-                                                decoration: InputDecoration(
-                                                  hintText: '대댓글 작성...',
-                                                  hintStyle: const TextStyle(color: Colors.grey),
-                                                  border: OutlineInputBorder(
-                                                    borderRadius: BorderRadius.circular(20),
-                                                    borderSide: const BorderSide(color: Colors.grey),
-                                                  ),
-                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            TextButton(
-                                              onPressed: () => _addReply(commentId),
-                                              child: const Text('작성', style: TextStyle(color: Colors.blue)),
+                                              DateFormat('yyyy.MM.dd HH:mm').format(reply['createdAt']),
+                                              style: const TextStyle(fontSize: 11, color: Colors.grey),
                                             ),
                                           ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(left: 44.0),
-                                child: replies.isEmpty
-                                    ? const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                                  child: Text('대댓글이 없습니다.', style: TextStyle(color: Colors.grey)),
-                                )
-                                    : ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: replies.length,
-                                  itemBuilder: (context, replyIndex) {
-                                    final reply = replies[replyIndex];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8.0),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const CircleAvatar(
-                                            radius: 12,
-                                            backgroundColor: Colors.grey,
-                                            child: Icon(Icons.person, color: Colors.white, size: 16),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                        const SizedBox(height: 3),
+                                        Text(reply['content'], style: const TextStyle(fontSize: 14)),
+                                        if (reply['userId'] == widget.currentUserId)
+                                          Align(
+                                            alignment: Alignment.bottomRight,
+                                            child: ButtonBar(
+                                              mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      reply['authorNickname'] ?? '알 수 없음',
-                                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      DateFormat('yyyy-MM-dd HH:mm').format(reply['createdAt'] as DateTime),
-                                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                                    ),
-                                                    const Spacer(),
-
-                                                    // 대댓글 삭제
-                                                    if (reply['authorId'] == widget.currentUserId)
-                                                      IconButton(
-                                                        icon: const Icon(Icons.delete, color: Colors.red, size: 18),
-                                                        onPressed: () async {
-                                                          final confirm = await showDialog<bool>(
-                                                            context: context,
-                                                            builder: (context) => AlertDialog(
-                                                              title: const Text('대댓글 삭제'),
-                                                              content: const Text('이 대댓글을 삭제하시겠습니까?'),
-                                                              actions: [
-                                                                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                                                                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
-                                                              ],
-                                                            ),
-                                                          );
-                                                          if (confirm == true) {
-                                                            await deleteReply(widget.postId, commentId, reply['id']);
-                                                            _fetchComments();
-                                                          }
-                                                        },
-                                                      ),
-                                                  ],
+                                                TextButton(
+                                                  onPressed: () => _editReply(comment['id'], reply['id'], reply['content']),
+                                                  child: Text(appLocalizations.editButton), // 다국어 적용 (재사용)
                                                 ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  reply['content'] ?? '내용 없음',
-                                                  style: const TextStyle(fontSize: 12),
+                                                TextButton(
+                                                  onPressed: () => _deleteReply(comment['id'], reply['id']),
+                                                  child: Text(appLocalizations.deleteButton), // 다국어 적용 (재사용)
                                                 ),
                                               ],
                                             ),
                                           ),
-                                        ],
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              // 대댓글 입력창
+                              if (_replyingToCommentId == comment['id'])
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _replyControllers[comment['id']],
+                                          decoration: InputDecoration(
+                                            hintText: appLocalizations.enterReplyHint, // 다국어 적용
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                              borderSide: const BorderSide(color: Colors.grey),
+                                            ),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          ),
+                                        ),
                                       ),
-                                    );
-                                  },
+                                      const SizedBox(width: 8),
+                                      TextButton(
+                                        onPressed: () => _addReply(comment['id']),
+                                        child: Text(appLocalizations.postButton), // 다국어 적용
+                                      ),
+                                      if (_replyControllers[comment['id']]!.text.isNotEmpty) // 수정 중일 때만 '수정' 버튼 표시
+                                        TextButton(
+                                          onPressed: () => _updateReply(comment['id'], _replyControllers[comment['id']]!.text), // TODO: replyId를 전달해야 합니다.
+                                          child: Text(appLocalizations.saveButton), // 다국어 적용
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
+          // 댓글 작성 입력창
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 5,
                   offset: const Offset(0, -1),
                 ),
@@ -513,7 +631,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     child: TextField(
                       controller: _commentController,
                       decoration: InputDecoration(
-                        hintText: '댓글을 입력하세요...',
+                        hintText: _editingCommentId != null ? appLocalizations.editCommentHint : appLocalizations.enterCommentHint, // 다국어 적용
                         hintStyle: const TextStyle(color: Colors.grey),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -525,8 +643,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   TextButton(
-                    onPressed: _addComment,
-                    child: const Text('작성', style: TextStyle(color: Colors.blue)),
+                    onPressed: _editingCommentId != null ? _updateComment : _addComment,
+                    child: Text(_editingCommentId != null ? appLocalizations.saveButton : appLocalizations.postButton, style: const TextStyle(color: Colors.blue)), // 다국어 적용
                   ),
                 ],
               ),

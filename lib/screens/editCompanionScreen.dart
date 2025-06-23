@@ -5,8 +5,13 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class EditCompanionScreen extends StatefulWidget {
   final String companionId;
+  final Map<String, dynamic> companionData; // ◀️ 아마도 이름이 이렇게 되어 있을 것입니다.
 
-  const EditCompanionScreen({super.key, required this.companionId});
+  const EditCompanionScreen({
+    super.key,
+    required this.companionId,
+    required this.companionData, // ◀️ 이 이름을 확인하세요.
+  });
 
   @override
   State<EditCompanionScreen> createState() => _EditCompanionScreenState();

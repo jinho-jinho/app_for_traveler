@@ -15,6 +15,7 @@ import 'dart:typed_data'; // Uint8List를 위해 추가
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -254,6 +255,38 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  String _getLocalizedCategoryName(String categoryKey, AppLocalizations appLocalizations) {
+    switch (categoryKey) {
+      case '병원':
+        return appLocalizations.hospital;
+      case '약국':
+        return appLocalizations.pharmacy;
+      case '경찰서':
+        return appLocalizations.policeStation;
+      case 'ATM':
+        return appLocalizations.atm;
+      case '은행':
+        return appLocalizations.bank;
+      case '환전소':
+        return appLocalizations.currencyExchange;
+      case '공중 화장실':
+        return appLocalizations.publicRestroom;
+      case '물품 보관함':
+        return appLocalizations.locker;
+      case '휴대폰 충전소':
+        return appLocalizations.phoneChargingStation;
+      case '공공 와이파이':
+        return appLocalizations.publicwifi;
+      case '카페':
+        return appLocalizations.cafe;
+      case '음식점':
+        return appLocalizations.restaurant;
+      case '랜드마크':
+        return appLocalizations.landmark; // app_en.arb에 atm 정의 필요
+      default:
+        return categoryKey; // 매핑되지 않은 경우 원래 키 반환
+    }
+  }
   // 이미지 크기 조정을 위한 유틸리티 메서드
   Future<BitmapDescriptor> resizeIcon(String assetPath, int width, int height) async {
     // 에셋 이미지 로드
@@ -1182,6 +1215,8 @@ class _MapScreenState extends State<MapScreen> {
   // 분류: 디자인
   void _showAddPlaceDialog() {
     String? selectedCategory;
+    // Access AppLocalizations for localized strings
+    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
@@ -1189,18 +1224,21 @@ class _MapScreenState extends State<MapScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text('새 장소 추가'),
+              title: Text(appLocalizations.addNewPlaceTitle), // Localized string for '새 장소 추가'
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButton<String>(
-                      hint: const Text('카테고리 선택'),
+                      hint: Text(appLocalizations.selectCategoryHint), // Localized string for '카테고리 선택'
                       value: selectedCategory,
-                      items: _categoryEnabled.keys.map((category) {
+                      items: _categoryEnabled.keys.map((categoryKey) {
                         return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
+                          value: categoryKey,
+                          // You might also want to localize the category names themselves
+                          // if they are displayed to the user and need translation.
+                          // For simplicity, we are using the raw category key here.
+                          child: Text(categoryKey),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -1216,11 +1254,11 @@ class _MapScreenState extends State<MapScreen> {
                         Navigator.pop(context);
                         _showLocationPickerDialog(
                           selectedCategory!,
-                          selectedCategory!,
+                          selectedCategory!, // Pass category name, potentially localized
                         );
                       }
                           : null,
-                      child: const Text('위치 선택'),
+                      child: Text(appLocalizations.selectLocationButton), // Localized string for '위치 선택'
                     ),
                   ],
                 ),
@@ -1228,7 +1266,7 @@ class _MapScreenState extends State<MapScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('취소'),
+                  child: Text(appLocalizations.cancelButton), // Localized string for '취소'
                 ),
               ],
             );
@@ -1242,15 +1280,18 @@ class _MapScreenState extends State<MapScreen> {
   // 역할: 지도에서 위치 선택 UI 제공 (현재 위치에서 시작)
   // 분류: 디자인
   void _showLocationPickerDialog(String category, String subcategory) {
-    // 현재 위치가 없으면 initialPosition 사용
-    LatLng initialMarkerPosition = _currentPosition ?? initialPosition; //
-    LatLng selectedPosition = initialMarkerPosition; //
+    // Access AppLocalizations for localized strings
+    final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
+
+    // Use current position if available, otherwise use initialPosition
+    LatLng initialMarkerPosition = _currentPosition ?? initialPosition;
+    LatLng selectedPosition = initialMarkerPosition; // Initialize with initialMarkerPosition
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('위치 선택'),
+          title: Text(appLocalizations.selectLocationTitle), // Localized string for '위치 선택'
           content: SizedBox(
             height: 400,
             width: 300,
@@ -1258,24 +1299,34 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 GoogleMap(
                   initialCameraPosition: CameraPosition(
-                    target: initialMarkerPosition, // 현재 위치에서 시작
+                    target: initialMarkerPosition, // Start at current/initial position
                     zoom: 15,
                   ),
-                  onMapCreated: (controller) {},
+                  onMapCreated: (controller) {
+                    // You might want to store the controller if you need to programmatically control the map
+                  },
                   onCameraMove: (position) {
+                    // Update selectedPosition as the camera moves
                     selectedPosition = position.target;
                   },
                   markers: {
+                    // Display a single marker at the initial position
                     Marker(
                       markerId: const MarkerId('selected_position'),
                       position: initialMarkerPosition,
+                      draggable: true, // Allow user to drag the marker
+                      onDragEnd: (newPosition) {
+                        // Update selectedPosition if the marker is dragged
+                        selectedPosition = newPosition;
+                      },
                     ),
                   },
                 ),
+                // This icon centers on the map, indicating the chosen point
                 const Center(
                   child: Icon(
-                    Icons.add,
-                    size: 30,
+                    Icons.add_location_alt, // Changed to a more relevant icon
+                    size: 40, // Increased size for better visibility
                     color: Colors.red,
                   ),
                 ),
@@ -1285,14 +1336,14 @@ class _MapScreenState extends State<MapScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
+              child: Text(appLocalizations.cancelButton), // Localized string for '취소'
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 _showAddPlaceDetailsDialog(category, subcategory, selectedPosition);
               },
-              child: const Text('확인'),
+              child: Text(appLocalizations.confirmButton), // Localized string for '확인'
             ),
           ],
         );
@@ -1802,6 +1853,8 @@ class _MapScreenState extends State<MapScreen> {
   // 분류: 디자인
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('지도'),
@@ -1847,16 +1900,21 @@ class _MapScreenState extends State<MapScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _categoryEnabled.keys.map((category) {
+                children: _categoryEnabled.keys.map((categoryKey) { // 'category'를 'categoryKey'로 변경하여 명확성을 높임
+                  // 여기서 지역화 함수를 호출합니다.
+                  String localizedCategoryName = _getLocalizedCategoryName(categoryKey, appLocalizations);
+
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: ChoiceChip(
-                      label: Text(category),
-                      selected: _categoryEnabled[category]!,
+                      label: Text(localizedCategoryName), // 지역화된 이름을 사용
+                      selected: _categoryEnabled[categoryKey]!,
                       onSelected: (selected) {
                         setState(() {
-                          _categoryEnabled[category] = selected;
+                          _categoryEnabled[categoryKey] = selected;
                         });
+                        // 여기에 필터링 함수를 호출할 수도 있습니다.
+                        // _filterMarkersByCategory(categoryKey);
                       },
                     ),
                   );
