@@ -129,17 +129,39 @@ class _MapScreenState extends State<MapScreen> {
   }
 
 // _initializeData: 마커 아이콘, 위치 권한, 닉네임, 데이터 초기화
-// 역할: 초기 데이터 설정 및 로드
+// 역할: 초기 데이터 설정 및 로드, 현재 위치를 기준으로 지도 초기화
 // 분류: 로직
 Future<void> _initializeData() async {
-  await _setupMarkerIcons();
-  if (mounted) {
-    setState(() {});
-  }
-  await _checkLocationPermission();
-  await _fetchCurrentUserNickname();
-  if (_currentPosition != null) {
-    await _fetchData(); // 현재 위치가 있으면 데이터 페치
+  try {
+    setState(() {
+      _isLoading = true;
+    });
+    await _setupMarkerIcons();
+    await _checkLocationPermission();
+    await _fetchCurrentUserNickname();
+    if (mounted) {
+      if (_currentPosition != null) {
+        setState(() {}); 
+        await _fetchData();
+      } else {
+        setState(() {
+          _isLoading = false; // 위치 실패 시 로딩 종료
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('현재 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요.')),
+        );
+      }
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false; // 에러 발생 시 로딩 종료
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('초기화 중 오류가 발생했습니다: $e')),
+      );
+      print('초기화 실패: $e');
+    }
   }
 }
   // _checkLocationPermission: 위치 권한 확인 및 현재 위치 가져오기
@@ -1849,18 +1871,19 @@ Widget build(BuildContext context) {
     ),
     body: Stack(
       children: [
-        _isMapVisible
-            ? GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition: const CameraPosition(
-                  target: initialPosition,
-                  zoom: 12,
-                ),
-                markers: _createMarkers(),
-                myLocationEnabled: _locationPermissionGranted,
-                myLocationButtonEnabled: true,
-              )
-            : const Center(child: Text('지도 로드 대기 중...')),
+        if (_currentPosition != null && _isMapVisible)
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: CameraPosition(
+              target: _currentPosition!,
+              zoom: 12,
+            ),
+            markers: _createMarkers(),
+            myLocationEnabled: _locationPermissionGranted,
+            myLocationButtonEnabled: true,
+          )
+        else
+          const Center(child: CircularProgressIndicator()), // 위치 로딩 중 표시
         Positioned(
           top: 10,
           left: 10,
@@ -1895,7 +1918,7 @@ Widget build(BuildContext context) {
                               ),
                               const SizedBox(width: 8),
                               Text(subCategory),
-                              const Spacer(), // 텍스트와 이미지 사이를 유연하게 조정
+                              const Spacer(), 
                               FutureBuilder<Widget>(
                                 future: _buildMarkerImage(subCategory),
                                 builder: (context, snapshot) {
@@ -1957,20 +1980,39 @@ Widget build(BuildContext context) {
             ],
           ),
         ),
-        if (_isLoading)
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 10),
-                Text(_syncProgressMessage),
-              ],
-            ),
-          ),
       ],
     ),
   );
+}
+
+// _getCurrentPosition: 현재 위치를 비동기적으로 가져오기
+// 역할: 위치 권한 확인 후 현재 위치 반환
+// 분류: 로직
+Future<LatLng?> _getCurrentPosition() async {
+  if (_locationPermissionGranted && _currentPosition != null) {
+    return _currentPosition;
+  }
+  try {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        return null;
+      }
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.bestForNavigation,
+      timeLimit: const Duration(seconds: 10),
+    );
+    return LatLng(position.latitude, position.longitude);
+  } catch (e) {
+    print('위치 가져오기 실패: $e');
+    return null;
+  }
 }
 
 // _buildMarkerImage: 카테고리별 마커 이미지를 생성
