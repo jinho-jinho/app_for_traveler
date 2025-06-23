@@ -105,7 +105,6 @@ class _MyAppState extends State<MyApp> {
         // primarySwatch 대신 colorScheme를 사용하며, 기존 primarySwatch는 제거해도 됩니다.
         // theme: ThemeData(primarySwatch: Colors.blue), // 이 줄은 위에 colorScheme로 대체됨
       ),
-      // _locale 값에 따라 앱의 언어가 변경됨
       locale: _locale,
       home: _currentUserId == null
           ? LoginScreen(onLogin: _setCurrentUser)
