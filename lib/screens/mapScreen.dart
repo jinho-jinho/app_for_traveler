@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:app_for_traveler/models/place.dart';
@@ -126,19 +128,20 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // _initializeData: 마커 아이콘, 위치 권한, 닉네임, 데이터 초기화
-  // 역할: 초기 데이터 설정 및 로드
-  // 분류: 로직
-  Future<void> _initializeData() async {
-    await _setupMarkerIcons();
-    if (mounted) {
-      setState(() {});
-    }
-    await _checkLocationPermission();
-    await _fetchCurrentUserNickname();
-    await _fetchData();
+// _initializeData: 마커 아이콘, 위치 권한, 닉네임, 데이터 초기화
+// 역할: 초기 데이터 설정 및 로드
+// 분류: 로직
+Future<void> _initializeData() async {
+  await _setupMarkerIcons();
+  if (mounted) {
+    setState(() {});
   }
-
+  await _checkLocationPermission();
+  await _fetchCurrentUserNickname();
+  if (_currentPosition != null) {
+    await _fetchData(); // 현재 위치가 있으면 데이터 페치
+  }
+}
   // _checkLocationPermission: 위치 권한 확인 및 현재 위치 가져오기
   // 역할: 사용자 위치 권한 처리 및 위치 설정
   // 분류: 로직
@@ -353,158 +356,201 @@ class _MapScreenState extends State<MapScreen> {
     print('데이터 동기화 완료, 동기화 상태 저장됨.');
   }
 
-  // _fetchData: Kakao API 및 Firestore에서 장소 데이터 가져오기
-  // 역할: 장소 데이터 동기화 및 로드, 선택된 장소 처리
-  // 분류: 로직
-  Future<void> _fetchData({bool forceSync = false}) async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
+// _fetchData: Kakao API 및 Firestore에서 장소 데이터 가져오기
+// 역할: 장소 데이터 동기화 및 로드, 현재 위치 기반 필터링
+// 분류: 로직
+Future<void> _fetchData({bool forceSync = false}) async {
+  if (mounted) {
+    setState(() {
+      _isLoading = true;
+    });
+  }
+
+  try {
+    bool isSynced = await _isKakaoDataSynced();
+    if (!isSynced || forceSync) {
+      final kakaoApiService = KakaoApiService();
+      final publicWifiService = PublicWifiService();
+
+      if (mounted) setState(() => _syncProgressMessage = "약국 위치 동기화 중...");
+      final pharmacies = await kakaoApiService.fetchPharmacies();
+      await _syncKakaoDataToFirestore(pharmacies);
+      print('약국 동기화 완료: ${pharmacies.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "경찰서/파출소 동기화 중...");
+      final policeStations = await kakaoApiService.fetchPoliceStations();
+      await _syncKakaoDataToFirestore(policeStations);
+      print('경찰서 동기화 완료: ${policeStations.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "ATM기 위치 동기화 중...");
+      final atms = await kakaoApiService.fetchAtms();
+      await _syncKakaoDataToFirestore(atms);
+      print('ATM 동기화 완료: ${atms.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "은행 위치 동기화 중...");
+      final banks = await kakaoApiService.fetchBanks();
+      await _syncKakaoDataToFirestore(banks);
+      print('은행 동기화 완료: ${banks.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "환전소 위치 동기화 중...");
+      final currencyExchanges = await kakaoApiService.fetchCurrencyExchanges();
+      await _syncKakaoDataToFirestore(currencyExchanges);
+      print('환전소 동기화 완료: ${currencyExchanges.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "공중 화장실 동기화 중...");
+      final publicToilets = await kakaoApiService.fetchPublicToilets();
+      await _syncKakaoDataToFirestore(publicToilets);
+      print('공중 화장실 동기화 완료: ${publicToilets.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "물품 보관함 동기화 중...");
+      final lockers = await kakaoApiService.fetchLockers();
+      await _syncKakaoDataToFirestore(lockers);
+      print('물품 보관함 동기화 완료: ${lockers.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "공공 와이파이 동기화 중...");
+      final publicWifis = await publicWifiService.fetchPublicWifis();
+      await _syncKakaoDataToFirestore(publicWifis);
+      print('공공 와이파이 동기화 완료: ${publicWifis.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "카페 동기화 중...");
+      final cafes = await kakaoApiService.fetchCafes();
+      await _syncKakaoDataToFirestore(cafes);
+      print('카페 동기화 완료: ${cafes.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "음식점 동기화 중...");
+      final restaurants = await kakaoApiService.fetchRestaurants();
+      await _syncKakaoDataToFirestore(restaurants);
+      print('음식점 동기화 완료: ${restaurants.length}개');
+
+      if (mounted) setState(() => _syncProgressMessage = "랜드마크 동기화 중...");
+      final landmarks = await kakaoApiService.fetchLandmarks();
+      await _syncKakaoDataToFirestore(landmarks);
+      print('랜드마크 동기화 완료: ${landmarks.length}개');
+
+      await _setKakaoDataSynced();
+    } else {
+      print('데이터 동기화 건너뜀. 기존 데이터를 로드합니다.');
     }
 
-    try {
-      bool isSynced = await _isKakaoDataSynced();
-      if (!isSynced || forceSync) {
-        final kakaoApiService = KakaoApiService();
-        final publicWifiService = PublicWifiService();
+    final userPlacesSnapshot = await _firestore.collection('places').get();
+    print('Firestore에서 조회된 총 장소 개수: ${userPlacesSnapshot.docs.length}');
 
-        if (mounted) setState(() => _syncProgressMessage = "약국 위치 동기화 중...");
-        final pharmacies = await kakaoApiService.fetchPharmacies();
-        await _syncKakaoDataToFirestore(pharmacies);
-        print('약국 동기화 완료: ${pharmacies.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "경찰서/파출소 동기화 중...");
-        final policeStations = await kakaoApiService.fetchPoliceStations();
-        await _syncKakaoDataToFirestore(policeStations);
-        print('경찰서 동기화 완료: ${policeStations.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "ATM기 위치 동기화 중...");
-        final atms = await kakaoApiService.fetchAtms();
-        await _syncKakaoDataToFirestore(atms);
-        print('ATM 동기화 완료: ${atms.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "은행 위치 동기화 중...");
-        final banks = await kakaoApiService.fetchBanks();
-        await _syncKakaoDataToFirestore(banks);
-        print('은행 동기화 완료: ${banks.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "환전소 위치 동기화 중...");
-        final currencyExchanges = await kakaoApiService.fetchCurrencyExchanges();
-        await _syncKakaoDataToFirestore(currencyExchanges);
-        print('환전소 동기화 완료: ${currencyExchanges.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "공중 화장실 동기화 중...");
-        final publicToilets = await kakaoApiService.fetchPublicToilets();
-        await _syncKakaoDataToFirestore(publicToilets);
-        print('공중 화장실 동기화 완료: ${publicToilets.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "물품 보관함 동기화 중...");
-        final lockers = await kakaoApiService.fetchLockers();
-        await _syncKakaoDataToFirestore(lockers);
-        print('물품 보관함 동기화 완료: ${lockers.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "공공 와이파이 동기화 중...");
-        final publicWifis = await publicWifiService.fetchPublicWifis();
-        await _syncKakaoDataToFirestore(publicWifis);
-        print('공공 와이파이 동기화 완료: ${publicWifis.length}개');
-
-        // 새로운 카테고리 동기화
-        if (mounted) setState(() => _syncProgressMessage = "카페 동기화 중...");
-        final cafes = await kakaoApiService.fetchCafes();
-        await _syncKakaoDataToFirestore(cafes);
-        print('카페 동기화 완료: ${cafes.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "음식점 동기화 중...");
-        final restaurants = await kakaoApiService.fetchRestaurants();
-        await _syncKakaoDataToFirestore(restaurants);
-        print('음식점 동기화 완료: ${restaurants.length}개');
-
-        if (mounted) setState(() => _syncProgressMessage = "랜드마크 동기화 중...");
-        final landmarks = await kakaoApiService.fetchLandmarks();
-        await _syncKakaoDataToFirestore(landmarks);
-        print('랜드마크 동기화 완료: ${landmarks.length}개');
-
-        await _setKakaoDataSynced();
-      } else {
-        print('데이터 동기화 건너뜀. 기존 데이터를 로드합니다.');
+    final userPlaces = userPlacesSnapshot.docs.map((doc) {
+      final data = doc.data();
+      List<Review> reviews = [];
+      if (data['reviews'] != null) {
+        reviews = (data['reviews'] as List).map((raw) {
+          final reviewData = raw as Map<String, dynamic>;
+          return Review(
+            userId: reviewData['userId'] as String,
+            rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
+            comment: reviewData['comment'] as String,
+            likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
+            imageUri: reviewData['imageUri'] as String?,
+          );
+        }).toList();
       }
 
-      final userPlacesSnapshot = await _firestore.collection('places').get();
-      print('Firestore에서 조회된 장소 개수: ${userPlacesSnapshot.docs.length}');
+      return Place(
+        id: doc.id,
+        name: data['name'] as String,
+        location: LatLng(
+          (data['latitude'] as num).toDouble(),
+          (data['longitude'] as num).toDouble(),
+        ),
+        category: data['category'] as String,
+        subcategory: data['subcategory'] as String,
+        isEncrypted: data['isEncrypted'] as bool? ?? false,
+        isFree: data['isFree'] as bool? ?? true,
+        isUserAdded: data['isUserAdded'] as bool? ?? false,
+        reviews: reviews,
+        reports: data['reports'] != null ? List<String>.from(data['reports']) : [],
+        address: data['address'] as String?, // 주소 필드 매핑
+      );
+    }).toList();
 
-      final userPlaces = userPlacesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        List<Review> reviews = [];
-        if (data['reviews'] != null) {
-          reviews = (data['reviews'] as List).map((raw) {
-            final reviewData = raw as Map<String, dynamic>;
-            return Review(
-              userId: reviewData['userId'] as String,
-              rating: (reviewData['rating'] as num?)?.toDouble() ?? 0.0,
-              comment: reviewData['comment'] as String,
-              likes: (reviewData['likes'] as num?)?.toInt() ?? 0,
-              imageUri: reviewData['imageUri'] as String?,
-            );
-          }).toList();
-        }
-
-        print('Firestore 장소 데이터: ID ${doc.id}, 이름: ${data['name']}, 주소: ${data['address'] ?? "주소 없음"}');
-
-        return Place(
-          id: doc.id,
-          name: data['name'] as String,
-          location: LatLng(
-            (data['latitude'] as num).toDouble(),
-            (data['longitude'] as num).toDouble(),
-          ),
-          category: data['category'] as String,
-          subcategory: data['subcategory'] as String,
-          isEncrypted: data['isEncrypted'] as bool? ?? false,
-          isFree: data['isFree'] as bool? ?? true,
-          isUserAdded: data['isUserAdded'] as bool? ?? false,
-          reviews: reviews,
-          reports: data['reports'] != null ? List<String>.from(data['reports']) : [],
-          address: data['address'] as String?, // 주소 필드 매핑
-        );
+    // 현재 위치 기반 필터링 (5km 반경 내)
+    if (_currentPosition != null) {
+      final filteredPlaces = userPlaces.where((place) {
+        final distance = _calculateDistance(_currentPosition!, place.location);
+        print('장소 ${place.name}와의 거리: ${distance.toStringAsFixed(2)}km');
+        return distance <= 5.0; // 5km 이내
       }).toList();
+      print('필터링 후 장소 개수: ${filteredPlaces.length}');
 
-      // 모든 장소를 표시
       if (mounted) {
         setState(() {
-          _hospitals = userPlaces.where((place) => place.subcategory == '병원 위치').toList();
-          _pharmacies = userPlaces.where((place) => place.subcategory == '약국 위치').toList();
-          _policeStations = userPlaces.where((place) => place.subcategory == '경찰서/파출소').toList();
-          _atms = userPlaces.where((place) => place.subcategory == 'ATM기 위치').toList();
-          _banks = userPlaces.where((place) => place.subcategory == '은행 위치').toList();
-          _currencyExchanges = userPlaces.where((place) => place.subcategory == '환전소 위치').toList();
-          _publicToilets = userPlaces.where((place) => place.subcategory == '공중 화장실').toList();
-          _lockers = userPlaces.where((place) => place.subcategory == '물품 보관함').toList();
-          _chargingStations = userPlaces.where((place) => place.subcategory == '휴대폰 충전 가능 장소').toList();
-          _publicWifis = userPlaces.where((place) => place.subcategory == '공공 와이파이').toList();
-          _cafes = userPlaces.where((place) => place.subcategory == '카페').toList();
-          _restaurants = userPlaces.where((place) => place.subcategory == '음식점').toList();
-          _landmarks = userPlaces.where((place) => place.subcategory == '랜드마크').toList();
-
+          _hospitals = filteredPlaces.where((place) => place.subcategory == '병원 위치').toList();
+          _pharmacies = filteredPlaces.where((place) => place.subcategory == '약국 위치').toList();
+          _policeStations = filteredPlaces.where((place) => place.subcategory == '경찰서/파출소').toList();
+          _atms = filteredPlaces.where((place) => place.subcategory == 'ATM기 위치').toList();
+          _banks = filteredPlaces.where((place) => place.subcategory == '은행 위치').toList();
+          _currencyExchanges = filteredPlaces.where((place) => place.subcategory == '환전소 위치').toList();
+          _publicToilets = filteredPlaces.where((place) => place.subcategory == '공중 화장실').toList();
+          _lockers = filteredPlaces.where((place) => place.subcategory == '물품 보관함').toList();
+          _chargingStations = filteredPlaces.where((place) => place.subcategory == '휴대폰 충전 가능 장소').toList();
+          _publicWifis = filteredPlaces.where((place) => place.subcategory == '공공 와이파이').toList();
+          _cafes = filteredPlaces.where((place) => place.subcategory == '카페').toList();
+          _restaurants = filteredPlaces.where((place) => place.subcategory == '음식점').toList();
+          _landmarks = filteredPlaces.where((place) => place.subcategory == '랜드마크').toList();
           _isLoading = false;
         });
       }
-
-      if (widget.selectedPlaceId != null && _isMapReady) {
-        await _moveToSelectedPlace(widget.selectedPlaceId!);
-      }
-    } catch (e) {
+    } else {
       if (mounted) {
         setState(() {
+          _hospitals = [];
+          _pharmacies = [];
+          _policeStations = [];
+          _atms = [];
+          _banks = [];
+          _currencyExchanges = [];
+          _publicToilets = [];
+          _lockers = [];
+          _chargingStations = [];
+          _publicWifis = [];
+          _cafes = [];
+          _restaurants = [];
+          _landmarks = [];
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('데이터 동기화 실패: 네트워크 연결을 확인하거나 나중에 다시 시도해주세요. (에러: $e)')),
+          const SnackBar(content: Text('현재 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요.')),
         );
-        print('데이터 조회 실패: $e');
       }
     }
+
+    if (widget.selectedPlaceId != null && _isMapReady) {
+      await _moveToSelectedPlace(widget.selectedPlaceId!);
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('데이터 동기화 실패: 네트워크 연결을 확인하거나 나중에 다시 시도해주세요. (에러: $e)')),
+      );
+      print('데이터 조회 실패: $e');
+    }
   }
+}
+// _calculateDistance: 두 지점 간 거리 계산 (Haversine 공식)
+  // 역할: 현재 위치와 장소 간 거리 계산
+  // 분류: 로직
+  double _calculateDistance(LatLng start, LatLng end) {
+    const double earthRadius = 6371; // 지구 반지름 (km)
+    final lat1 = start.latitude * math.pi / 180;
+    final lat2 = end.latitude * math.pi / 180;
+    final deltaLat = (end.latitude - start.latitude) * math.pi / 180;
+    final deltaLon = (end.longitude - start.longitude) * math.pi / 180;
+
+    final a = math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
+        math.cos(lat1) * math.cos(lat2) * math.sin(deltaLon / 2) * math.sin(deltaLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c; // km 단위
+  }
+
 
   // _syncKakaoDataToFirestore: Kakao 데이터를 Firestore에 동기화
   // 역할: 새로운 장소 데이터를 Firestore에 배치 쓰기로 저장
@@ -1752,9 +1798,9 @@ void _showSearchDialog() {
     );
   }
 
-  // build: 지도, 카테고리 필터, 로딩 UI 렌더링
-  // 역할: 지도 화면 및 UI 구성
-  // 분류: 디자인
+// build: 지도, 카테고리 필터, 로딩 UI 렌더링
+// 역할: 지도 화면 및 UI 구성
+// 분류: 디자인
 @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -1802,6 +1848,7 @@ Widget build(BuildContext context) {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       itemBuilder: (context) => _categoryHierarchy[mainCategory]!.map((subCategory) {
+                        // 하위 카테고리 옆에 이미지 표시
                         return PopupMenuItem<String>(
                           value: subCategory,
                           child: Row(
@@ -1817,6 +1864,16 @@ Widget build(BuildContext context) {
                               ),
                               const SizedBox(width: 8),
                               Text(subCategory),
+                              const Spacer(), // 텍스트와 이미지 사이를 유연하게 조정
+                              FutureBuilder<Widget>(
+                                future: _buildMarkerImage(subCategory),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  return snapshot.data ?? const SizedBox.shrink();
+                                },
+                              ),
                             ],
                           ),
                         );
@@ -1883,6 +1940,102 @@ Widget build(BuildContext context) {
       ],
     ),
   );
+}
+
+// _buildMarkerImage: 카테고리별 마커 이미지를 생성
+// 역할: assets에서 이미지 파일을 로드하여 반환
+// 분류: 로직
+Future<Widget> _buildMarkerImage(String category) async {
+  String assetPath = _getCategoryImagePath(category) ?? 'lib/screens/assets/default_icon.png';
+  try {
+    final byteData = await rootBundle.load(assetPath);
+    final uint8List = byteData.buffer.asUint8List();
+    return Image.memory(
+      uint8List,
+      width: 20,
+      height: 20,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        print('마커 이미지 로드 실패 ($assetPath): $error');
+        return const Icon(Icons.location_on, size: 20, color: Colors.green); // 실패 시 대체 아이콘
+      },
+    );
+  } catch (e) {
+    print('마커 이미지 로드 오류 ($assetPath): $e');
+    return const Icon(Icons.location_on, size: 20, color: Colors.green); // 오류 시 대체 아이콘
+  }
+}
+
+// _getCategoryImagePath: 카테고리에 따른 이미지 파일 경로 반환
+// 역할: 한국어 카테고리에 맞는 영어 파일 경로 제공
+// 분류: 로직
+String? _getCategoryImagePath(String category) {
+  switch (category) {
+    case '병원':
+      return 'lib/screens/assets/hospital_icon.png';
+    case '약국':
+      return 'lib/screens/assets/pharmacy_icon.png';
+    case '경찰서':
+      return 'lib/screens/assets/police_icon.png';
+    case 'ATM':
+      return 'lib/screens/assets/atm_icon.png';
+    case '은행':
+      return 'lib/screens/assets/bank_icon.png';
+    case '환전소':
+      return 'lib/screens/assets/currency_exchange_icon.png';
+    case '공중 화장실':
+      return 'lib/screens/assets/public_toilet_icon.png';
+    case '물품 보관함':
+      return 'lib/screens/assets/locker_icon.png';
+    case '휴대폰 충전소':
+      return 'lib/screens/assets/charging_station_icon.png';
+    case '공공 와이파이':
+      return 'lib/screens/assets/public_wifi_icon.png';
+    case '카페':
+      return 'lib/screens/assets/cafe_icon.png';
+    case '음식점':
+      return 'lib/screens/assets/restaurant_icon.png';
+    case '랜드마크':
+      return 'lib/screens/assets/landmark_icon.png';
+    default:
+      return null;
+  }
+}
+
+// _getCategoryIcon: 카테고리에 따른 아이콘 반환
+// 역할: 각 카테고리에 맞는 마커 아이콘 제공
+// 분류: 로직
+BitmapDescriptor? _getCategoryIcon(String category) {
+  switch (category) {
+    case '병원':
+      return hospitalIcon;
+    case '약국':
+      return pharmacyIcon;
+    case '경찰서':
+      return policeIcon;
+    case 'ATM':
+      return atmIcon;
+    case '은행':
+      return bankIcon;
+    case '환전소':
+      return currencyExchangeIcon;
+    case '공중 화장실':
+      return publicToiletIcon;
+    case '물품 보관함':
+      return lockerFreeIcon;
+    case '휴대폰 충전소':
+      return chargingStationIcon;
+    case '공공 와이파이':
+      return publicWifiIcon;
+    case '카페':
+      return cafeIcon;
+    case '음식점':
+      return restaurantIcon;
+    case '랜드마크':
+      return landmarkIcon;
+    default:
+      return null;
+  }
 }
 }
 Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
