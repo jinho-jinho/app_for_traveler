@@ -557,11 +557,11 @@ Future<void> _fetchData({bool forceSync = false}) async {
     }
   }
 }
-// _calculateDistance: 두 지점 간 거리 계산 (Haversine 공식)
+// _calculateDistance: 두 지점 간 거리 계산 
   // 역할: 현재 위치와 장소 간 거리 계산
   // 분류: 로직
   double _calculateDistance(LatLng start, LatLng end) {
-    const double earthRadius = 6371; // 지구 반지름 (km)
+    const double earthRadius = 6371;
     final lat1 = start.latitude * math.pi / 180;
     final lat2 = end.latitude * math.pi / 180;
     final deltaLat = (end.latitude - start.latitude) * math.pi / 180;
