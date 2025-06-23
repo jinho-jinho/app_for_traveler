@@ -435,7 +435,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
 
         iconTheme: const IconThemeData(color: Colors.black),
-        titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
       ),
       body: Column(
         children: [
@@ -645,9 +644,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           borderSide: const BorderSide(color: Colors.grey),
                         ),
 
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-                      ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

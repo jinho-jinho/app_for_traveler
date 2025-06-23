@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
 import 'package:intl/intl.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   final List<Map<String, dynamic>> disasterAlerts;
   final List<Map<String, dynamic>> commentAlerts;
   final String currentUserId;
@@ -16,6 +16,11 @@ class NotificationScreen extends StatelessWidget {
     required this.currentUserNickname,
   });
 
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
   String _formatTimestamp(DateTime? time) {
     if (time == null) return '';
     final now = DateTime.now();
@@ -29,8 +34,8 @@ class NotificationScreen extends StatelessWidget {
 
   List<Map<String, dynamic>> _mergeAndSortNotifications() {
     final all = [
-      for (final e in disasterAlerts) {'type': 'disaster', ...e},
-      for (final e in commentAlerts) {'type': 'comment', ...e},
+      for (final e in widget.disasterAlerts) {'type': 'disaster', ...e},
+      for (final e in widget.commentAlerts) {'type': 'comment', ...e},
     ];
 
     all.sort((a, b) {
@@ -85,28 +90,48 @@ class NotificationScreen extends StatelessWidget {
                     blurRadius: 6,
                     offset: const Offset(0, 3),
                   ),
-                  onTap: isDisaster
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostDetailScreen(
-                                postId: notif['postId'],
-                                title: notif['postTitle'],
-                                content: notif['postContent'],
-                                authorId: notif['postAuthorId'],
-                                authorNickname: notif['postAuthorNickname'],
-                                createdAt: notif['postCreatedAt'],
-                                currentUserId: currentUserId,
-                                currentUserNickname: currentUserNickname,
-                              ),
-                            ),
-                          );
-                        },
-                );
-              },
-            ),
+                ],
+              ),
+              child: ListTile(
+                leading: Icon(
+                  isDisaster ? Icons.warning : Icons.comment,
+                  color: isDisaster ? Colors.red : Colors.blue,
+                ),
+                title: Text(
+                  isDisaster
+                      ? (notif['message'] ?? 'Unknown disaster message')
+                      : '${notif['nickname'] ?? 'Someone'} commented on your post',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  _formatTimestamp(timestamp),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                onTap: isDisaster
+                    ? null
+                    : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PostDetailScreen(
+                        postId: notif['postId'],
+                        title: notif['postTitle'],
+                        content: notif['postContent'],
+                        authorId: notif['postAuthorId'],
+                        authorNickname: notif['postAuthorNickname'],
+                        createdAt: notif['postCreatedAt'],
+                        currentUserId: widget.currentUserId,
+                        currentUserNickname: widget.currentUserNickname,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+
     );
   }
 }

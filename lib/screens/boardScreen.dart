@@ -3,8 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
 // 게시판 화면을 나타내는 StatefulWidget
 // 사용자 ID와 닉네임을 받아 게시물 목록을 표시하고 새 게시물을 작성할 수 있는 화면 제공
 class BoardScreen extends StatefulWidget {
@@ -36,40 +34,34 @@ class _BoardScreenState extends State<BoardScreen> {
   List<Map<String, dynamic>> get _filteredPosts {
     if (_searchQuery.isEmpty) return _posts;
     return _posts.where((post) {
-      final title = post['title']?.toLowerCase() ?? '';
-      final content = post['content']?.toLowerCase() ?? '';
+      final title = (post['title'] ?? '').toLowerCase();
+      final content = (post['content'] ?? '').toLowerCase();
       return title.contains(_searchQuery) || content.contains(_searchQuery);
     }).toList();
   }
 
-  // initState: 위젯 초기화 시 게시물 조회 시작
+  // 위젯 초기화 시 호출
+  // 게시물 데이터를 처음 가져오기 위해 _fetchPosts 호출
   @override
   void initState() {
     super.initState();
     _fetchPosts();
   }
 
-  // dispose: 컨트롤러 해제
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  // _fetchPosts: Firestore에서 게시물 가져와 상태 업데이트
-  // 역할: 게시물 데이터 조회
-  // 분류: 로직
+  // Firestore에서 게시물 목록을 가져오는 메소드
+  // 최신순으로 정렬된 게시물을 가져와 _posts 리스트에 저장
   Future<void> _fetchPosts() async {
-    // ──────────────────────────────────────────────────────────────────
-    final appLocalizations = AppLocalizations.of(context); // nullable로 가져옴
-    // ──────────────────────────────────────────────────────────────────
     setState(() {
-      _isLoading = true;
+      _isLoading = true; // 로딩 시작
     });
+
     try {
-      QuerySnapshot snapshot = await _firestore
+      // Firestore 'posts' 컬렉션에서 최신순으로 데이터 가져오기
+      QuerySnapshot postSnapshot = await _firestore
           .collection('posts')
           .orderBy('createdAt', descending: true)
           .get();
+
       // 가져온 데이터를 Map 형태로 변환하여 리스트에 저장
       List<Map<String, dynamic>> posts = postSnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
@@ -86,180 +78,267 @@ class _BoardScreenState extends State<BoardScreen> {
 
       // 상태 업데이트: 게시물 리스트 저장 및 로딩 종료
       setState(() {
-        _posts = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return {
-            'id': doc.id,
-            'title': data['title'] as String? ?? (appLocalizations?.noTitle ?? '제목 없음'), // 다국어 적용
-            'content': data['content'] as String? ?? (appLocalizations?.noContent ?? '내용 없음'), // 다국어 적용
-            'authorId': data['authorId'] as String,
-            'authorNickname': data['authorNickname'] as String? ?? (appLocalizations?.unknown ?? '알 수 없음'), // 다국어 적용
-            'createdAt': (data['createdAt'] as Timestamp).toDate(),
-          };
-        }).toList();
+        _posts = posts;
+        _isLoading = false;
       });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.postLoadFailed(e.toString()) ?? '게시물 로드 실패: $e'))); // 다국어 적용
-      }
-    } finally {
+      // 에러 발생 시 로딩 종료 및 에러 메시지 표시
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-  // _showAddPostDialog: 새 게시물 작성 다이얼로그 표시
-  // 역할: 게시물 작성 UI 제공
-  // 분류: 디자인
-  void _showAddPostDialog() {
-    final TextEditingController titleController = TextEditingController();
-    final TextEditingController contentController = TextEditingController();
-    // ──────────────────────────────────────────────────────────────────
-    final appLocalizations = AppLocalizations.of(context)!;
-    // ──────────────────────────────────────────────────────────────────
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(appLocalizations.createPostTitle), // 다국어 적용
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(hintText: appLocalizations.postTitleHint), // 다국어 적용
-              ),
-              TextField(
-                controller: contentController,
-                decoration: InputDecoration(hintText: appLocalizations.postContentHint), // 다국어 적용
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
-            ),
-            TextButton(
-              onPressed: () {
-                _addPost(titleController.text, contentController.text);
-                Navigator.of(context).pop();
-              },
-              child: Text(appLocalizations.writeButton), // 다국어 적용
-            ),
-          ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('게시물 목록을 불러오는 데 실패했습니다.')),
         );
-      },
-    );
-  }
-
-  // _addPost: Firestore에 새 게시물 추가
-  // 역할: 게시물 데이터 저장
-  // 분류: 로직
-  Future<void> _addPost(String title, String content) async {
-    // ──────────────────────────────────────────────────────────────────
-    final appLocalizations = AppLocalizations.of(context)!;
-    // ──────────────────────────────────────────────────────────────────
-    if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.emptyPostFieldsWarning))); // 다국어 적용
-      return;
-    }
-
-    try {
-      await _firestore.collection('posts').add({
-        'title': title,
-        'content': content,
-        'authorId': widget.currentUserId,
-        'authorNickname': widget.currentUserNickname ?? widget.currentUserId,
-        'createdAt': Timestamp.now(),
-      });
-      _fetchPosts(); // 게시물 추가 후 목록 새로고침
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.postCreatedSuccess))); // 다국어 적용
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.postCreateFailed(e.toString())))); // 다국어 적용
       }
     }
   }
-  // _buildPostList: 검색어에 따라 필터링된 게시물 목록을 표시
-  // 역할: 게시물 목록 UI 구성
-  // 분류: 디자인
+
+  // 게시판 검색
   Widget _buildPostList() {
-    // ──────────────────────────────────────────────────────────────────
-    final appLocalizations = AppLocalizations.of(context)!;
-    // ──────────────────────────────────────────────────────────────────
     if (_filteredPosts.isEmpty) {
-      return Center(child: Text(appLocalizations.noSearchResults)); // 다국어 적용
+      return const Center(
+          child: Text('검색 결과가 없습니다.', style: TextStyle(color: Colors.grey)));
     }
+
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       itemCount: _filteredPosts.length,
       itemBuilder: (context, index) {
         final post = _filteredPosts[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          child: ListTile(
-            title: Text(post['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(post['content'], maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(
-                  appLocalizations.authorAndDate(
-                    post['authorNickname'] ?? appLocalizations.unknown, // 다국어 적용
-                    DateFormat('yyyy.MM.dd HH:mm').format(post['createdAt']),
-                  ),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    PostDetailScreen(
+                      postId: post['id'],
+                      title: post['title'],
+                      content: post['content'],
+                      authorId: post['authorId'],
+                      authorNickname: post['authorNickname'],
+                      createdAt: post['createdAt'],
+                      currentUserId: widget.currentUserId,
+                      currentUserNickname: widget.currentUserNickname,
+                    ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-            onTap: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PostDetailScreen(
-                    postId: post['id'],
-                    title: post['title'],
-                    content: post['content'],
-                    authorId: post['authorId'],
-                    authorNickname: post['authorNickname'],
-                    createdAt: post['createdAt'],
-                    currentUserId: widget.currentUserId,
-                    currentUserNickname: widget.currentUserNickname,
-                  ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      post['authorNickname'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      DateFormat('yyyy-MM-dd HH:mm').format(post['createdAt']),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
-              );
-              if (result == true) {
-                // 게시물 수정/삭제 후 돌아왔을 때 목록 새로고침
-                _fetchPosts();
-              }
-            },
+                const SizedBox(height: 8),
+                Text(
+                  post['title'],
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  post['content'],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black87),
+                ),
+                if (post['authorId'] == widget.currentUserId)
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) =>
+                              AlertDialog(
+                                title: const Text('게시물 삭제'),
+                                content: const Text('정말 이 게시물을 삭제하시겠습니까?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('취소'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('삭제'),
+                                  ),
+                                ],
+                              ),
+                        );
+                        if (confirm == true) {
+                          await _deletePost(post['id']);
+                          _fetchPosts(); // 새로고침
+                        }
+                      },
+                    ),
+                  )
+              ],
+            ),
           ),
         );
       },
-
     );
   }
+
+  // post 삭제
+  Future<void> _deletePost(String postId) async {
+    try {
+      // 댓글 가져오기
+      final commentSnapshot = await _firestore
+          .collection('comments')
+          .where('postId', isEqualTo: postId)
+          .get();
+
+      for (final commentDoc in commentSnapshot.docs) {
+        final commentId = commentDoc.id;
+
+        // 대댓글 삭제
+        final replySnapshot = await _firestore
+            .collection('replies')
+            .where('commentId', isEqualTo: commentId)
+            .get();
+
+        for (final replyDoc in replySnapshot.docs) {
+          print('Deleting reply: ${replyDoc.id}');
+          await _firestore.collection('replies').doc(replyDoc.id).delete();
+        }
+
+        print('Deleting comment: $commentId');
+        await _firestore.collection('comments').doc(commentId).delete();
+      }
+
+      // 게시글 삭제
+      print('Deleting post: $postId');
+      await _firestore.collection('posts').doc(postId).delete();
+
+      if (mounted) {
+        setState(() => _posts.removeWhere((post) => post['id'] == postId));
+      }
+    } catch (e) {
+      print('Error while deleting: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('게시물 삭제 중 오류가 발생했습니다.')),
+        );
+      }
+    }
+  }
+
+  // 새 게시물 작성 다이얼로그를 표시하는 메소드
+  // 사용자가 제목과 내용을 입력하여 새 게시물을 Firestore에 저장
+  void _showAddPostDialog() {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) =>
+          AlertDialog(
+            title: const Text('새 게시물 작성'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: '제목'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: contentController,
+                    decoration: const InputDecoration(labelText: '내용'),
+                    maxLines: 5,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (titleController.text.isNotEmpty &&
+                      contentController.text.isNotEmpty) {
+                    try {
+                      final newDoc = await _firestore.collection('posts').add({
+                        'title': titleController.text,
+                        'content': contentController.text,
+                        'authorId': widget.currentUserId,
+                        'authorNickname': widget.currentUserNickname ??
+                            widget.currentUserId,
+                        'createdAt': Timestamp.now(),
+                      });
+
+                      // 먼저 다이얼로그 닫기
+                      Navigator.pop(dialogContext);
+
+                      // 프레임 완료 후 전체 다시 불러오기
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _fetchPosts(); // 목록 전체 새로고침
+                        }
+                      });
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('게시물 저장 중 오류가 발생했습니다.')),
+                        );
+                      }
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('제목과 내용을 입력해주세요.')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('작성'),
+              )
+            ],
+          ),
+    );
+  }
+
 
   // UI를 구성하는 메소드
   // 게시물 목록을 표시하고 새 게시물 작성 버튼 제공
   @override
   Widget build(BuildContext context) {
-    // ──────────────────────────────────────────────────────────────────
-    final appLocalizations = AppLocalizations.of(context)!;
-    // ──────────────────────────────────────────────────────────────────
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text(appLocalizations.boardTitle), // 다국어 적용
         backgroundColor: Colors.grey[100],
         elevation: 0,
         title: const Text('게시판', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -277,9 +356,10 @@ class _BoardScreenState extends State<BoardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               decoration: InputDecoration(
-                hintText: appLocalizations.searchHintText, // 다국어 적용
+                hintText: '검색어를 입력하세요...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onChanged: (value) {
                 setState(() {
@@ -294,11 +374,6 @@ class _BoardScreenState extends State<BoardScreen> {
                 : _buildPostList(),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddPostDialog,
-        child: const Icon(Icons.add),
-        tooltip: appLocalizations.addPostTooltip, // 다국어 적용
       ),
     );
   }
