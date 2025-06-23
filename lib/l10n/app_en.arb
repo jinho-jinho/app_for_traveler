@@ -1,0 +1,842 @@
+{
+  "@@locale": "en",
+  "loginScreenTitle": "Login",
+  "signUpScreenTitle": "Sign Up",
+  "idHint": "ID",
+  "passwordHint": "Password",
+  "confirmPasswordHint": "Confirm Password",
+  "nicknameHint": "Nickname",
+  "genderLabel": "Gender",
+  "genderFemale": "Female",
+  "genderMale": "Male",
+  "ageHint": "Age",
+  "contactHint": "Contact (KakaoTalk ID or Email)",
+  "loginButton": "Login",
+  "signUpButton": "Sign Up",
+  "createAccountButton": "Create Account",
+  "goToLoginButton": "Go to Login",
+  "loginErrorEmptyFields": "Please enter your ID and password.",
+  "loginErrorIdNotFound": "ID does not exist.",
+  "loginErrorPasswordMismatch": "Password does not match.",
+  "loginErrorGeneric": "Login error: {error}",
+  "@loginErrorGeneric": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "signUpErrorAllFieldsRequired": "Please fill in all fields.",
+  "signUpErrorPasswordMismatch": "Passwords do not match.",
+  "signUpErrorPasswordTooShort": "Password must be at least 6 characters long.",
+  "signUpErrorIdExists": "ID already exists.",
+  "signUpErrorGeneric": "Sign up error: {error}",
+  "@signUpErrorGeneric": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "myPageScreenTitle": "My Page",
+  "loadingText": "Loading...",
+  "editProfileButton": "Edit Profile",
+  "myActivitiesHeader": "My Activities",
+  "myFavoritesTitle": "My Favorites",
+  "myScheduleTitle": "My Schedule",
+  "myPostsTitle": "My Posts",
+  "noMyPosts": "No posts.",
+  "noTitle": "No Title",
+  "authorPrefix": "Author: ",
+  "unknown": "Unknown",
+  "myCommentsTitle": "My Comments",
+  "noMyComments": "No comments.",
+  "noContent": "No Content",
+  "originalPostPrefix": "Original Post: ",
+  "unknownPost": "Unknown Post",
+  "settingsHeader": "Settings",
+  "notificationSettingsTitle": "Notification Settings",
+  "helpCenterTitle": "Help Center",
+  "aboutAppTitle": "About App",
+  "logoutButton": "Logout",
+  "deleteAccountButton": "Delete Account",
+  "editProfileTitle": "Edit Profile",
+  "cancelButton": "Cancel",
+  "profileUpdateSuccess": "Profile updated successfully!",
+  "profileUpdateFailed": "Failed to update profile:",
+  "closeButton": "Close",
+
+  "appTitle": "Traveler App",
+  "notificationsTooltip": "Notifications",
+  "weatherTooltip": "Weather Info",
+  "homeTab": "Home",
+  "mapTab": "Map",
+  "boardTab": "Board",
+  "myPageTab": "My Page",
+  "createPostTooltip": "Create Post",
+  "currentParticipants": "Participants",
+  "closedStatus": "Closed",
+  "disasterAlertTitle": "Disaster Alert",
+  "noDisasterMessage": "No disaster messages currently.",
+  "weatherLoadingError": "Failed to load weather data.",
+  "currentWeatherInfo": "Current Weather Information",
+  "temperature": "Temperature",
+  "weatherCondition": "Weather",
+  "humidity": "Humidity",
+  "fineDust": "Fine Dust",
+  "clearSky": "Clear sky",
+  "clouds": "Clouds",
+  "rain": "Rain",
+  "snow": "Snow",
+  "welcomeMessage": "Welcome,",
+  "currentLocationInfo": "Currently in Gumi-si, Gyeongsangbuk-do, South Korea",
+  "hotspotsTitle": "My Hot Places",
+  "addPlaceButton": "Add Place",
+  "findCompanionTitle": "Find a Companion",
+  "noCompanions": "No companion posts yet.",
+  "viewAllCompanionsButton": "View All Companions",
+  "recentPostsTitle": "Recent Posts",
+  "noRecentPosts": "No recent posts yet.",
+  "viewMorePostsButton": "View More Posts",
+
+  "startDateBeforeEndDateError": "Start date must be before end date.",
+  "editFailed": "Edit failed",
+  "editScheduleTitle": "Edit Schedule",
+  "editTravelInfo": "Edit Travel Information",
+  "scheduleTitleLabel": "Title *",
+  "enterTitle": "Please enter a title",
+  "additionalDescriptionLabel": "Additional Description",
+  "descriptionHint": "e.g., Relaxing time with friends / Museum-focused itinerary",
+  "destinationLabel": "Destination *",
+  "enterDestination": "Please enter a destination",
+  "selectStartDate": "Select Start Date",
+  "startDate": "Start Date",
+  "selectEndDate": "Select End Date",
+  "endDate": "End Date",
+  "completeEditButton": "Complete Edit",
+
+
+  "selectStartAndEndDate": "Please select both start and end dates.",
+  "editCompanionInfoTitle": "Edit Companion Info",
+  "editCompanionInfo": "Edit Companion Information",
+  "titleLabel": "Title *",
+  "companionDescriptionHint": "e.g., Prefer quiet travel / Welcome MBTI I types",
+  "recruitCountLabel": "Number of Recruits *",
+  "recruitCountError": "Enter a number between 2 and 50",
+  "setCompanionConditions": "Set Companion Conditions",
+  "genderConditionLabel": "Gender Condition",
+  "genderConditionAny": "Any",
+  "genderConditionMaleOnly": "Male Only",
+  "genderConditionFemaleOnly": "Female Only",
+  "ageUnlimited": "Age Unlimited",
+  "minAgeLabel": "Min Age",
+  "maxAgeLabel": "Max Age",
+  "ageConditionRange": "Range",
+
+  "registerFailed": "Registration failed",
+  "registerTripTitle": "Register Trip",
+  "enterTripInfo": "Enter Trip Information",
+  "tripDescriptionHint": "e.g., Respect alone time / Planning a food tour nearby in the evening",
+  "registerTripButton": "Register Trip",
+
+  "registerCompanionTooltip": "Register Companion",
+  "showOnlyOpenCompanions": "Show only recruiting companions",
+  "destinationUndecided": "Destination Undecided",
+  "noCompanionsRegistered": "No companions currently registered.",
+  "recruitmentComplete": "Recruitment Complete",
+  "recruiting": "Recruiting",
+  "personUnit": "persons",
+
+  "userNotFound": "User information not found.",
+  "anonymous": "Anonymous",
+  "registerCompanionTitle": "Register Companion",
+  "enterCompanionInfo": "Enter Companion Information",
+  "registerCompanionButton": "Register Companion",
+  "myTravelScheduleTitle": "My Travel Schedule",
+  "addPersonalScheduleTooltip": "Add Personal Schedule",
+  "noSchedulesForDate": "No schedules registered for this date.",
+  "companionSchedulePrefix": "[Companion] {scheduleTitle}",
+  "@companionSchedulePrefix": {
+    "description": "Prefix for companion schedules in the list",
+    "placeholders": {
+      "scheduleTitle": {}
+    }
+  },
+  "loadFailed": "Load failed: {error}",
+  "@loadFailed": {
+    "description": "Error message for failed data loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteScheduleTitle": "Delete Schedule",
+  "confirmDeleteSchedule": "Are you sure you want to delete this schedule?",
+  "deleteButton": "Delete",
+  "scheduleDeleted": "Schedule deleted.",
+  "deleteFailed": "Delete failed: {error}",
+  "@deleteFailed": {
+    "description": "Error message for failed schedule deletion",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "personalScheduleDetailTitle": "Personal Schedule Details",
+  "editButton": "Edit",
+  "cannotLoadSchedule": "Cannot load schedule.",
+  "additionalDescriptionPrefix": "Additional description: ",
+  "none": "None",
+
+  "todayEnjoyableDay": "Have a great day!",
+  "weatherCold": "It's very cold! Dress warmly and bring a scarf and gloves.",
+  "weatherHot": "It's very hot! Avoid outdoor activities and stay indoors with a cool drink.",
+  "weatherRain": "It's raining, so be sure to bring an umbrella and look for indoor activities.",
+  "weatherSnow": "It's snowing, so be careful of slippery roads, and how about a warm cup of tea?",
+  "weatherClear": "It's a clear day! We recommend walking or outdoor activities.",
+  "weatherClouds": "It's cloudy. We recommend light indoor exercise or reading.",
+  "batteryCharging": "\nYour battery is charging. How about watching a movie while it charges?",
+  "batteryLow": "\nBattery is low! We recommend bringing a power bank or connecting to power.",
+  "phoneChargingStation": "phone charging station",
+  "batteryHalf": "\nYour battery is half full. We recommend activities that consume less power.",
+  "wifiConnected": "\nYou are connected to Wi-Fi. Enjoy streaming services without worrying about data!",
+  "mobileData": "\nYou are using mobile data. Be careful with activities that consume a lot of data.",
+  "noInternet": "\nNo internet connection. We recommend offline games or pre-downloaded content.",
+  "publicWifi": "public Wi-Fi",
+
+  "recommendationBasedOnCurrentStatus": "Recommendation Based on Current Status",
+  "mapView": "Map View",
+
+  "postLoadFailed": "Failed to load posts: {error}",
+  "@postLoadFailed": {
+    "description": "Error message for failed post loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "createPostTitle": "Create New Post",
+  "postTitleHint": "Enter title",
+  "postContentHint": "Enter content",
+  "writeButton": "Write",
+  "emptyPostFieldsWarning": "Title and content cannot be empty.",
+  "postCreatedSuccess": "Post created successfully!",
+  "postCreateFailed": "Failed to create post: {error}",
+  "@postCreateFailed": {
+    "description": "Error message for failed post creation",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noSearchResults": "No search results found.",
+  "authorAndDate": "By {authorNickname} on {date}",
+  "@authorAndDate": {
+    "description": "Format for displaying author and creation date of a post",
+    "placeholders": {
+      "authorNickname": {},
+      "date": {}
+    }
+  },
+  "boardTitle": "Board",
+  "searchHintText": "Enter search term...",
+  "addPostTooltip": "Add new post",
+
+  "companionNotFound": "Companion not found.",
+  "companionLoadError": "Failed to load companion: {error}",
+  "@companionLoadError": {
+    "description": "Error message for failed companion loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentsLoadError": "Failed to load comments: {error}",
+  "@commentsLoadError": {
+    "description": "Error message for failed comment loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "requestsLoadError": "Failed to load requests: {error}",
+  "@requestsLoadError": {
+    "description": "Error message for failed request loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "participantsLoadError": "Failed to load participants: {error}",
+  "@participantsLoadError": {
+    "description": "Error message for failed participant loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "companionApplicationNotPossible": "Application not possible (closed or full).",
+  "applicationSentSuccess": "Application sent successfully!",
+  "applicationSendError": "Failed to send application: {error}",
+  "@applicationSendError": {
+    "description": "Error message for failed application sending",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "applicationCancelledSuccess": "Application cancelled successfully!",
+  "applicationCancelError": "Failed to cancel application: {error}",
+  "@applicationCancelError": {
+    "description": "Error message for failed application cancellation",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "emptyCommentWarning": "Comment cannot be empty.",
+  "commentAddedSuccess": "Comment added successfully!",
+  "commentAddFailed": "Failed to add comment: {error}",
+  "@commentAddFailed": {
+    "description": "Error message for failed comment addition",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteCommentTitle": "Delete Comment",
+  "confirmDeleteComment": "Are you sure you want to delete this comment?",
+  "deletedComment": "Deleted comment.",
+  "commentDeletedSuccess": "Comment deleted successfully!",
+  "commentDeleteFailed": "Failed to delete comment: {error}",
+  "@commentDeleteFailed": {
+    "description": "Error message for failed comment deletion",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "editCommentTitle": "Edit Comment",
+  "editCommentHint": "Edit your comment",
+  "saveButton": "Save",
+  "commentEditedSuccess": "Comment edited successfully!",
+  "commentEditFailed": "Failed to edit comment: {error}",
+  "@commentEditFailed": {
+    "description": "Error message for failed comment editing",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "recruitmentClosedWarning": "Recruitment is closed.",
+  "maxParticipantsReached": "Maximum number of participants reached.",
+  "participantAcceptedSuccess": "{userName} has been accepted!",
+  "@participantAcceptedSuccess": {
+    "description": "Message when a participant is accepted",
+    "placeholders": {
+      "userName": {}
+    }
+  },
+  "acceptRequestFailed": "Failed to accept request: {error}",
+  "@acceptRequestFailed": {
+    "description": "Error message for failed request acceptance",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "requestRejectedSuccess": "Request rejected.",
+  "rejectRequestFailed": "Failed to reject request: {error}",
+  "@rejectRequestFailed": {
+    "description": "Error message for failed request rejection",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "leaveCompanionTitle": "Leave Companion",
+  "confirmLeaveCompanion": "Are you sure you want to leave this companion group?",
+  "leaveButton": "Leave",
+  "leftCompanionSuccess": "You have left the companion group.",
+  "leaveCompanionFailed": "Failed to leave companion: {error}",
+  "@leaveCompanionFailed": {
+    "description": "Error message for failed companion leaving",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteCompanionTitle": "Delete Companion",
+  "confirmDeleteCompanion": "Are you sure you want to delete this companion post?",
+  "companionDeletedSuccess": "Companion post deleted successfully!",
+  "companionDeleteFailed": "Failed to delete companion: {error}",
+  "@companionDeleteFailed": {
+    "description": "Error message for failed companion deletion",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorText": "Error",
+  "companionDataNotFound": "Companion data not found.",
+  "destinationPrefix": "Destination: {destination}",
+  "@destinationPrefix": {
+    "description": "Prefix for the companion's destination",
+    "placeholders": {
+      "destination": {}
+    }
+  },
+  "leaderLabel": "Leader",
+  "participantsLabel": "Participants",
+  "periodLabel": "Period",
+  "contentLabel": "Content",
+  "leaveCompanionButton": "Leave Companion",
+  "cancelApplicationButton": "Cancel Application",
+  "applyForCompanionButton": "Apply for Companion",
+  "applicantsListTitle": "Applicants List",
+  "noApplicants": "No applicants currently.",
+  "acceptButton": "Accept",
+  "rejectButton": "Reject",
+  "participantsSectionTitle": "Participants",
+  "noParticipants": "No participants yet.",
+  "commentsSectionTitle": "Comments",
+  "noCommentsYet": "No comments yet. Be the first to comment!",
+  "replyButton": "Reply",
+  "deletedCommentIndicator": "(This comment has been deleted)",
+  "replyHint": "Write a reply...",
+  "writeReplyTitle": "Write Reply",
+  "replyContentHint": "Enter your reply...",
+  "commentInputHint": "Enter your comment...",
+  "addCommentButton": "Add Comment",
+  "recruitmentClosed": "Recruitment Closed",
+  "initializingMap": "Initializing map...",
+  "placeNotFound": "Place not found.",
+  "mapLoadError": "Failed to load map: {error}",
+  "@mapLoadError": {
+    "description": "Error message for map loading failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "locationPermissionDenied": "Location permissions are denied.",
+  "locationPermissionDeniedForever": "Location permissions are permanently denied, we cannot request permissions.",
+  "locationFetchError": "Failed to get current location: {error}",
+  "@locationFetchError": {
+    "description": "Error message for current location fetching failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "loadingPlaces": "Loading places...",
+  "placeLoadError": "Failed to load places: {error}",
+  "@placeLoadError": {
+    "description": "Error message for place loading failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "loadingWifi": "Loading public Wi-Fi...",
+  "wifiMarkerSnippet": "Public Wi-Fi",
+  "wifiLoadError": "Failed to load public Wi-Fi: {error}",
+  "@wifiLoadError": {
+    "description": "Error message for public Wi-Fi loading failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "subcategoryLabel": "Subcategory",
+  "freeAdmission": "Free Admission",
+  "paidAdmission": "Paid Admission",
+  "encryptedFacilityWarning": "This is an encrypted facility.",
+  "reviewsTitle": "Reviews",
+  "addPlaceTitle": "Add New Place",
+  "placeNameHint": "Enter place name",
+  "placeAddressHint": "Enter address",
+  "addressSearchFailed": "Address search failed.",
+  "isEncryptedLabel": "Encrypted Facility?",
+  "isFreeLabel": "Free Admission?",
+  "addButton": "Add",
+  "emptyFieldsWarning": "Name and address cannot be empty.",
+  "invalidAddressError": "Could not find coordinates for the address.",
+  "placeAddedSuccess": "Place added successfully!",
+  "placeAddFailed": "Failed to add place: {error}",
+  "@placeAddFailed": {
+    "description": "Error message for place adding failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "editPlaceTitle": "Edit Place",
+  "placeUpdatedSuccess": "Place updated successfully!",
+  "placeUpdateFailed": "Failed to update place: {error}",
+  "@placeUpdateFailed": {
+    "description": "Error message for place updating failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deletePlaceTitle": "Delete Place",
+  "confirmDeletePlace": "Are you sure you want to delete this place?",
+  "placeDeletedSuccess": "Place deleted successfully!",
+  "placeDeleteFailed": "Failed to delete place: {error}",
+  "@placeDeleteFailed": {
+    "description": "Error message for place deletion failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "reviewLoadFailed": "Failed to load reviews: {error}",
+  "@reviewLoadFailed": {
+    "description": "Error message for review loading failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "reviewFieldsEmptyWarning": "Please enter a rating and comment.",
+  "reviewAddedSuccess": "Review added successfully!",
+  "reviewAddFailed": "Failed to add review: {error}",
+  "@reviewAddFailed": {
+    "description": "Error message for review adding failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "uploadingImage": "Uploading image...",
+  "imageCompressionFailed": "Image compression failed.",
+  "imageUploadSuccess": "Image uploaded successfully!",
+  "imageUploadFailed": "Failed to upload image: {error}",
+  "@imageUploadFailed": {
+    "description": "Error message for image upload failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "removedFromFavorites": "Removed from favorites.",
+  "addedToFavorites": "Added to favorites!",
+  "favoriteToggleFailed": "Failed to toggle favorite: {error}",
+  "@favoriteToggleFailed": {
+    "description": "Error message for favorite toggle failure",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "historicalSites": "Historical Sites",
+  "naturalLandmarks": "Natural Landmarks",
+  "parksGardens": "Parks/Gardens",
+  "themeParks": "Theme Parks",
+  "artMuseums": "Art/Museums",
+  "otherAttractions": "Other Attractions",
+  "koreanFood": "Korean Food",
+  "westernFood": "Western Food",
+  "asianFood": "Asian Food",
+  "cafesDesserts": "Cafes/Desserts",
+  "barsPubs": "Bars/Pubs",
+  "otherFood": "Other Food",
+  "hotels": "Hotels",
+  "motels": "Motels",
+  "guesthouses": "Guesthouses",
+  "hanoks": "Hanoks",
+  "resorts": "Resorts",
+  "otherAccommodations": "Other Accommodations",
+  "performanceHalls": "Performance Halls",
+  "exhibitionHalls": "Exhibition Halls",
+  "libraries": "Libraries",
+  "bookstores": "Bookstores",
+  "cinemas": "Cinemas",
+  "otherCulture": "Other Culture",
+  "hikingTrails": "Hiking Trails",
+  "cyclingPaths": "Cycling Paths",
+  "waterSports": "Water Sports",
+  "winterSports": "Winter Sports",
+  "indoorSports": "Indoor Sports",
+  "otherLeisure": "Other Leisure",
+  "mapScreenTitle": "Map",
+  "searchPlacesHint": "Search for places...",
+  "allCategories": "All Categories",
+  "addPlaceTooltip": "Add Place",
+  "reviewHint": "Write your review...",
+  "uploadImageTooltip": "Upload Image",
+  "addReviewButton": "Add Review",
+  "noReviewsYet": "No reviews yet. Be the first to add one!",
+  "etcCategory": "Etc.",
+  "categoryLabel": "Category",
+  "addressLabel": "Address",
+  "installationAgencyLabel": "Installation Agency",
+
+  "postDetailTitle": "Post Details",
+  "authorLabel": "Author",
+  "commentsTitle": "Comments",
+  "replyPrefix": "Reply to",
+  "enterReplyHint": "Enter your reply...",
+  "postButton": "Post",
+  "enterCommentHint": "Enter your comment...",
+  "failedToLoadComments": "Failed to load comments: {error}",
+  "@failedToLoadComments": {
+    "description": "Error message for failed comment loading",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentEmptyWarning": "Comment cannot be empty.",
+  "failedToAddComment": "Failed to add comment: {error}",
+  "@failedToAddComment": {
+    "description": "Error message for failed comment adding",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentUpdatedSuccess": "Comment updated successfully!",
+  "failedToUpdateComment": "Failed to update comment: {error}",
+  "@failedToUpdateComment": {
+    "description": "Error message for failed comment updating",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "failedToDeleteComment": "Failed to delete comment: {error}",
+  "@failedToDeleteComment": {
+    "description": "Error message for failed comment deletion",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "replyEmptyWarning": "Reply cannot be empty.",
+  "replyAddedSuccess": "Reply added successfully!",
+  "failedToAddReply": "Failed to add reply: {error}",
+  "@failedToAddReply": {
+    "description": "Error message for failed reply adding",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "replyUpdatedSuccess": "Reply updated successfully!",
+  "failedToUpdateReply": "Failed to update reply: {error}",
+  "@failedToUpdateReply": {
+    "description": "Error message for failed reply updating",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteReplyTitle": "Delete Reply",
+  "confirmDeleteReply": "Are you sure you want to delete this reply?",
+  "replyDeletedSuccess": "Reply deleted successfully!",
+  "failedToDeleteReply": "Failed to delete reply: {error}",
+  "@failedToDeleteReply": {
+    "description": "Error message for failed reply deletion",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noReviews": "No reviews",
+
+  "searchButton": "Search",
+  "filterButton": "Filter",
+
+  "gettingCurrentLocation": "Getting current location...",
+  "syncingFirestoreData": "Syncing Firestore data...",
+  "loadingKakaoPlaces": "Loading Kakao places...",
+  "loadingPublicWifiHotspots": "Loading public Wi-Fi hotspots...",
+  "locationServiceDisabled": "Location services are disabled.",
+
+  "errorOccurred": "Error occurred",
+  "noPlaceFound": "No place found.",
+  "noPlaceFoundForKeyword": "No place found for '{keyword}'.",
+  "@noPlaceFoundForKeyword": {
+    "description": "Message when no place is found for a specific keyword",
+    "placeholders": {
+      "keyword": {}
+    }
+  },
+  "failedToSearchPlace": "Failed to search place: {error}",
+  "@failedToSearchPlace": {
+    "description": "Error message for failed place search",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "encryptedLocation": "Encrypted location",
+  "writeReviewTitle": "Write a Review",
+  "reviewInputHint": "Enter your review here...",
+  "selectImageButton": "Select Image",
+  "submitReviewButton": "Submit Review",
+  "failedToAddReview": "Failed to add review: {error}",
+  "@failedToAddReview": {
+    "description": "Error message for failed review adding",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "filterByCategories": "Filter by Categories",
+
+  "invalidAddress": "Invalid address. Please try again.",
+  "failedToAddPlace": "Failed to add place: {error}",
+  "@failedToAddPlace": {
+    "description": "Error message for failed place adding",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "categoryLandmark": "Landmark",
+  "categoryAccommodation": "Accommodation",
+  "categoryRestaurant": "Restaurant",
+  "categoryTransportation": "Transportation",
+  "categoryEtc": "Etc",
+
+  "subcategoryHistory": "History",
+  "subcategoryNature": "Nature",
+  "subcategoryCulture": "Culture",
+  "subcategoryLeisure": "Leisure",
+  "subcategoryHotel": "Hotel",
+  "subcategoryMotel": "Motel",
+  "subcategoryGuestHouse": "Guest House",
+  "subcategoryResort": "Resort",
+  "subcategoryCamping": "Camping",
+  "subcategoryKoreanFood": "Korean Food",
+  "subcategoryChineseFood": "Chinese Food",
+  "subcategoryJapaneseFood": "Japanese Food",
+  "subcategoryWesternFood": "Western Food",
+  "subcategoryCafe": "Cafe",
+  "subcategoryBusTerminal": "Bus Terminal",
+  "subcategoryTrainStation": "Train Station",
+  "subcategoryAirport": "Airport",
+  "subcategoryPort": "Port",
+  "subcategoryConvenience": "Convenience Facilities",
+  "subcategoryPublicInstitution": "Public Institution",
+  "subcategoryHospital": "Hospital",
+  "subcategoryPoliceStation": "Police Station",
+
+  "dataSyncMessage": "Data synchronization in progress...",
+  "failedToGetLocation": "Failed to get location information: {error}",
+  "failedToLoadMarkerIcons": "Failed to load marker icons: {error}",
+  "dataSyncSkipped": "Data synchronization skipped. Loading existing data.",
+  "pharmacySyncing": "Synchronizing pharmacy locations...",
+  "policeStationSyncing": "Synchronizing police stations...",
+  "atmSyncing": "Synchronizing ATM locations...",
+  "bankSyncing": "Synchronizing bank locations...",
+  "currencyExchangeSyncing": "Synchronizing currency exchange locations...",
+  "publicToiletSyncing": "Synchronizing public toilets...",
+  "lockerSyncing": "Synchronizing lockers...",
+  "publicWifiSyncing": "Synchronizing public Wi-Fi...",
+  "cafeSyncing": "Synchronizing cafes...",
+  "restaurantSyncing": "Synchronizing restaurants...",
+  "landmarkSyncing": "Synchronizing landmarks...",
+  "dataSyncComplete": "Data synchronization complete",
+  "dataSyncFailed": "Data synchronization failed: Please check your network connection or try again later. (Error: {error})",
+  "failedToUpdateFavorites": "An error occurred while updating favorites. Please check your network.",
+  "placeDetailsTitle": "Place Details",
+  "address": "Address: {address}",
+  "noAddressInfo": "No Address Info",
+  "averageRating": "Average Rating: {rating}",
+  "comments": "Comments:",
+  "noComments": "No comments yet.",
+  "commentAuthor": "Author: {nickname}",
+  "loading": "Loading...",
+  "deleteReview": "Delete Review",
+  "deleteReviewConfirm": "Are you sure you want to delete this review?",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "addComment": "Add Comment",
+  "failedToLoadUserInfo": "Failed to load user information. Please try again later.",
+  "rating": "Rating: {rating}",
+  "attachPhoto": "Attach Photo",
+  "failedToUploadImage": "Image upload failed. Please try again.",
+  "newPlaceAdded": "{subcategory} Added",
+  "placeNameRequired": "Place Name (Required)",
+  "addressRequired": "Address (Required, e.g., Daehak-ro 52-1)",
+  "freePaid": "Free/Paid:",
+  "free": "Free",
+  "paid": "Paid",
+  "add": "Add",
+  "searchMap": "Search Map",
+  "searchPlaceholder": "Enter place name or address",
+  "search": "Search",
+  "close": "Close",
+  "refreshData": "Refresh Data",
+  "selectLocation": "Select Location",
+  "confirm": "Confirm",
+  "placeNameAndAddressRequired": "Place name and address are required.",
+  "searching": "Searching for '{query}'...",
+  "@@searching": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "searchResultsDisplayed": "Showing results for '{query}': {placeName}",
+  "noSearchResultsForQuery": "No search results found for '{query}'.",
+  "mapSearchError": "Map search failed: {error}",
+  "searchFailed": "Search failed: {error}",
+  "currentLocation": "Current Location",
+  "mapLoadingWait": "Map is loading. Please wait...",
+
+  "mapTitle": "Map",
+  "hospital": "Hospital",
+  "pharmacy": "Pharmacy",
+  "policeStation": "Police Station",
+  "atm": "ATM",
+  "bank": "Bank",
+  "currencyExchange": "Currency Exchange",
+  "publicRestroom": "Public Restroom",
+  "publicToilet": "Public Toilet",
+  "locker": "Locker",
+  "cafe": "Cafe",
+  "restaurant": "Restaurant",
+  "landmark": "Landmark",
+  "addPlace": "Add Place",
+  "publicwifi": "public wifi",
+  "home": "Home",
+  "map": "Map",
+  "board": "Board",
+  "myPage": "My Page",
+  "categoryTitle": "Select Category",
+  "companionRecruitment": "Companion Recruitment",
+  "viewMorePosts": "View More Posts",
+  "author": "Author",
+  "hotspotByPopularity": "Hotspots by Popularity",
+  "viewMoreHotspots": "View More Hotspots",
+  "weatherInfo": "Weather Info",
+  "disasterAlerts": "Disaster Alerts",
+  "recommendationTitle": "recommendationTitle",
+  "recommendationText": "recommendationText",
+  "indoorCafeRecommendation": "indoorCafeRecommendation",
+  "hotspotByLikes": "hotspotByLikes",
+  "noHotspots": "noHotspots",
+  "recentPosts": "recentPosts",
+  "noPosts": "noPosts",
+  "findCompanion": "Find Your Travel Mate 👋",
+  "noCompanionsRecruiting": "Currently no companions are recruiting.",
+  "viewMoreCompanions": "View more companions...",
+  "newDisasterMessage":"newDisasterMessage",
+  "selectLanguage":"selectLanguage",
+
+  "addNewPlaceTitle":"addNewPlaceTitle",
+  "selectCategoryHint":"selectCategoryHint",
+  "selectLocationButton":"selectLocationButton",
+
+  "selectLocationTitle":"selectLocationTitle",
+  "selectLocationconfimButton":"selectLocationconfimButton",
+  "confirmButton":"confirm",
+  "myAddedPlaces": "My Added Places",
+  "noPlaceName": "No place name",
+  "approvalComplete": "Approval Complete",
+  "underReview": "Under Review",
+  "favoritePlaces": "Favorite Places",
+
+  "nicknameLabel": "Nickname",
+  "genderLabel": "Gender",
+  "ageLabel": "Age",
+  "contactLabel": "Contact",
+  "saveButton": "Save",
+  "deleteAccountTitle": "Delete Account",
+  "confirmDeleteAccount": "Are you sure you want to delete your account? All data will be deleted.",
+  "logoutButton": "Logout",
+  "deleteAccountButton": "Delete Account",
+  "myPageTitle": "My Page",
+  "travelSchedule": "Travel Schedule",
+  "myPosts": "My Posts",
+  "commentedPosts": "Commented Posts",
+  "noNickname": "No nickname",
+  "notEntered": "Not entered",
+  "genderFemale": "Female",
+  "genderMale": "Male",
+
+  "category_emergency": "Emergency & Safety",
+  "category_finance": "Finance & Exchange",
+  "category_facility": "Convenience",
+  "category_tourism": "Tourism",
+  "subcategory_hospital": "Hospital",
+  "subcategory_pharmacy": "Pharmacy",
+  "subcategory_police": "Police Station",
+  "subcategory_atm": "ATM",
+  "subcategory_bank": "Bank",
+  "subcategory_currency_exchange": "Currency Exchange",
+  "subcategory_toilet": "Public Toilet",
+  "subcategory_locker": "Locker",
+  "subcategory_charging": "Charging Station",
+  "subcategory_wifi": "Public Wi-Fi",
+  "subcategory_cafe": "Cafe",
+  "subcategory_restaurant": "Restaurant",
+  "subcategory_landmark": "Landmark"
+}

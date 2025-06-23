@@ -5,6 +5,7 @@ import 'package:app_for_traveler/screens/loginScreen.dart';
 import 'package:app_for_traveler/screens/postDetailScreen.dart';
 
 import 'myScheduleScreen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // AppLocalizations 임포트 추가
 
 class MyPageScreen extends StatefulWidget {
   final String currentUserId;
@@ -25,9 +26,9 @@ class MyPageScreen extends StatefulWidget {
 class _MyPageScreenState extends State<MyPageScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _nicknameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController(); // (세연)
-  final TextEditingController _contactController = TextEditingController(); // (세연)
-  String _selectedGender = '여성'; // (세연)
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  String _selectedGender = 'Female'; // (세연)
 
   String? _nickname;
   List<String> _favorites = [];
@@ -43,7 +44,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _setupRealtimeListener();
     _loadMyPosts();
     _loadMyCommentedPosts();
-    _loadMyPlaces(); 
+    _loadMyPlaces();
   }
 
   @override
@@ -62,9 +63,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
       setState(() {
         _nickname = data['nickname'] ?? widget.currentUserId;
         _nicknameController.text = _nickname!;
-        _selectedGender = data['gender'] ?? '여성'; // (세연)
-        _ageController.text = data['age']?.toString() ?? ''; // (세연)
-        _contactController.text = data['contact'] ?? ''; // (세연)
+        _selectedGender = data['gender'] ?? '여성';
+        _ageController.text = data['age']?.toString() ?? '';
+        _contactController.text = data['contact'] ?? '';
         _favorites = List<String>.from(data['favorites'] ?? []);
       });
     }
@@ -128,11 +129,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showMyPlaces() {
+    final appLocalizations = AppLocalizations.of(context)!;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('내가 추가한 장소')),
+          appBar: AppBar(title: Text(appLocalizations.myAddedPlaces)), // 다국어 적용
           body: ListView.builder(
             itemCount: _myPlaces.length,
             itemBuilder: (context, index) {
@@ -140,10 +142,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
               final placeId = data['id'] ?? '';
 
               return ListTile(
-                title: Text(data['name'] ?? '장소명 없음'),
+                title: Text(data['name'] ?? appLocalizations.noPlaceName), // 다국어 적용
                 subtitle: Text(data['category'] ?? ''),
                 trailing: Text(
-                  data['Added'] == true ? '승인 완료' : '검토 중',
+                  data['Added'] == true ? appLocalizations.approvalComplete : appLocalizations.underReview, // 다국어 적용
                   style: TextStyle(
                     color: data['Added'] == true ? Colors.green : Colors.orange,
                     fontWeight: FontWeight.bold,
@@ -162,19 +164,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showSimpleList(String title, List<DocumentSnapshot> docs) {
+    final appLocalizations = AppLocalizations.of(context)!;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) =>
             Scaffold(
                 backgroundColor: Colors.grey[100],
-              appBar: AppBar(title: Text(title), backgroundColor: Colors.grey[100],),
+                appBar: AppBar(title: Text(title), backgroundColor: Colors.grey[100],),
                 body: ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
                     return _buildInfoCard(
-                      title: data['title'] ?? '제목 없음',
+                      title: data['title'] ?? appLocalizations.noTitle, // 다국어 적용
                       subtitle: data['content'] ?? '',
                       onTap: () => Navigator.push(
                         context,
@@ -200,13 +203,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showFavorites() {
+    final appLocalizations = AppLocalizations.of(context)!;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) =>
             Scaffold(
                 backgroundColor: Colors.grey[100],
-              appBar: AppBar(title: const Text('즐겨찾기한 장소'), backgroundColor: Colors.grey[100],),
+                appBar: AppBar(title: Text(appLocalizations.favoritePlaces), backgroundColor: Colors.grey[100],), // 다국어 적용
                 body: ListView(
                   children: _favorites.map((placeId) {
                     return FutureBuilder<DocumentSnapshot>(
@@ -236,21 +240,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   void _showEditProfileDialog() {
+    final appLocalizations = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (_) =>
           AlertDialog(
-            title: const Text('내 정보 수정'), // (세연)
+            title: Text(appLocalizations.editProfileTitle), // 다국어 적용
             content: SingleChildScrollView(
               child: Column(
                 children: [
                   TextField(controller: _nicknameController,
-                      decoration: const InputDecoration(labelText: '닉네임')),
-                  // (세연)
+                      decoration: InputDecoration(labelText: appLocalizations.nicknameLabel)), // 다국어 적용
                   DropdownButtonFormField<String>(
                     value: _selectedGender,
-                    decoration: const InputDecoration(labelText: '성별'), // (세연)
-                    items: ['여성', '남성'].map((value) {
+                    decoration: InputDecoration(labelText: appLocalizations.genderLabel), // 다국어 적용
+                    items: [appLocalizations.genderFemale, appLocalizations.genderMale].map((value) { // 다국어 적용
                       return DropdownMenuItem(value: value, child: Text(value));
                     }).toList(),
                     onChanged: (val) {
@@ -258,18 +262,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     },
                   ),
                   TextField(controller: _ageController,
-                      decoration: const InputDecoration(labelText: '나이'),
+                      decoration: InputDecoration(labelText: appLocalizations.ageLabel), // 다국어 적용
                       keyboardType: TextInputType.number),
-                  // (세연)
                   TextField(controller: _contactController,
-                      decoration: const InputDecoration(labelText: '연락처')),
-                  // (세연)
+                      decoration: InputDecoration(labelText: appLocalizations.contactLabel)), // 다국어 적용
                 ],
               ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context),
-                  child: const Text('취소')),
+                  child: Text(appLocalizations.cancelButton)), // 다국어 적용
               ElevatedButton(
                 onPressed: () async {
                   await _firestore
@@ -278,16 +280,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       .update({
                     'nickname': _nicknameController.text.trim(),
                     'gender': _selectedGender,
-                    // (세연)
                     'age': int.tryParse(_ageController.text.trim()) ?? 0,
-                    // (세연)
                     'contact': _contactController.text.trim(),
-                    // (세연)
                   });
                   _loadUserData();
                   Navigator.pop(context);
                 },
-                child: const Text('저장'),
+                child: Text(appLocalizations.saveButton), // 다국어 적용
               ),
             ],
           ),
@@ -295,18 +294,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _deleteAccount() async {
-    // (세연)
+    final appLocalizations = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) =>
           AlertDialog(
-            title: const Text('회원 탈퇴'),
-            content: const Text('정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.'),
+            title: Text(appLocalizations.deleteAccountTitle), // 다국어 적용
+            content: Text(appLocalizations.confirmDeleteAccount), // 다국어 적용
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false),
-                  child: const Text('취소')),
+                  child: Text(appLocalizations.cancelButton)), // 다국어 적용
               ElevatedButton(onPressed: () => Navigator.pop(context, true),
-                  child: const Text('탈퇴')),
+                  child: Text(appLocalizations.deleteButton)), // 다국어 적용
             ],
           ),
     );
@@ -325,51 +324,52 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!; //
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.grey[100], //
       appBar: AppBar(
-        backgroundColor: Colors.grey[100],
-        elevation: 0,
-        title: const Row(
+        backgroundColor: Colors.grey[100], //
+        elevation: 0, //
+        title: Row(
           children: [
-            Icon(Icons.person_outline, color: Colors.black87),
-            SizedBox(width: 8),
+            const Icon(Icons.person_outline, color: Colors.black87), //
+            const SizedBox(width: 8), //
             Text(
-              '마이페이지',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+              appLocalizations.myPageTitle, // 다국어 적용
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18), //
             ),
           ],
         ),
       ),
 
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16), //
         children: [
-          const SizedBox(height: 5),
+          const SizedBox(height: 5), //
 
           // 프로필 카드
-          _buildProfileCard(),
-          const SizedBox(height: 10),
+          _buildProfileCard(), //
+          const SizedBox(height: 10), //
 
           // 카드형 메뉴
-          _buildCardItem('내 정보 수정', Icons.edit, _showEditProfileDialog),
-          _buildCardItem('즐겨찾기 한 장소', Icons.star_border, _showFavorites),
-          _buildCardItem('내가 추가한 장소', Icons.place_outlined, _showMyPlaces),
-          _buildCardItem('여행 스케줄', Icons.calendar_month, () {
+          _buildCardItem(appLocalizations.editProfileTitle, Icons.edit, _showEditProfileDialog), // 다국어 적용
+          _buildCardItem(appLocalizations.favoritePlaces, Icons.star_border, _showFavorites), // 다국어 적용
+          _buildCardItem(appLocalizations.myAddedPlaces, Icons.place_outlined, _showMyPlaces), // 다국어 적용
+          _buildCardItem(appLocalizations.travelSchedule, Icons.calendar_month, () { // 다국어 적용
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => MyScheduleScreen(currentUserId: widget.currentUserId),
+                builder: (_) => MyScheduleScreen(currentUserId: widget.currentUserId), //
               ),
             );
           }),
-          _buildCardItem('내가 쓴 글 조회', Icons.article_outlined, () => _showSimpleList('내가 쓴 글', _myPosts)),
-          _buildCardItem('댓글 단 글 조회', Icons.comment_outlined, () => _showSimpleList('댓글 단 글', _myComments)),
+          _buildCardItem(appLocalizations.myPosts, Icons.article_outlined, () => _showSimpleList(appLocalizations.myPosts, _myPosts)), // 다국어 적용
+          _buildCardItem(appLocalizations.commentedPosts, Icons.comment_outlined, () => _showSimpleList(appLocalizations.commentedPosts, _myComments)), // 다국어 적용
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 24), //
 
           // 로그아웃 / 탈퇴 버튼 그룹
-          _buildButtonGroup(),
+          _buildButtonGroup(), //
         ],
       ),
     );
@@ -377,30 +377,31 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
 
   Widget _buildProfileCard() {
+    final appLocalizations = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.all(30),
+      padding: const EdgeInsets.all(30), //
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white, //
+        borderRadius: BorderRadius.circular(12), //
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05), //
+            blurRadius: 6, //
+            offset: const Offset(0, 3), //
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start, //
         children: [
           Text(
-            _nickname ?? '닉네임 없음',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            _nickname ?? appLocalizations.noNickname, // 다국어 적용
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), //
           ),
-          const SizedBox(height: 6),
-          Text('성별: $_selectedGender'),
-          Text('나이: ${_ageController.text.isNotEmpty ? _ageController.text : '미입력'}'),
-          Text('연락처: ${_contactController.text.isNotEmpty ? _contactController.text : '미입력'}'),
+          const SizedBox(height: 6), //
+          Text('${appLocalizations.genderLabel}: $_selectedGender'), // 다국어 적용
+          Text('${appLocalizations.ageLabel}: ${_ageController.text.isNotEmpty ? _ageController.text : appLocalizations.notEntered}'), // 다국어 적용
+          Text('${appLocalizations.contactLabel}: ${_contactController.text.isNotEmpty ? _contactController.text : appLocalizations.notEntered}'), // 다국어 적용
         ],
       ),
     );
@@ -408,30 +409,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Widget _buildCardItem(String title, IconData icon, VoidCallback onTap) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 6), //
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white, //
+        borderRadius: BorderRadius.circular(12), //
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05), //
+            blurRadius: 6, //
+            offset: const Offset(0, 3), //
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: Icon(icon, color: Colors.grey[700], size: 20),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), //
+        leading: Icon(icon, color: Colors.grey[700], size: 20), //
         title: Text(
           title,
           style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontSize: 14, //
+            fontWeight: FontWeight.w500, //
           ),
         ),
-        trailing: const Icon(Icons.chevron_right, size: 18),
-        onTap: onTap,
+        trailing: const Icon(Icons.chevron_right, size: 18), //
+        onTap: onTap, //
       ),
     );
   }
@@ -443,55 +444,56 @@ class _MyPageScreenState extends State<MyPageScreen> {
     VoidCallback? onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16), //
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white, //
+        borderRadius: BorderRadius.circular(12), //
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(0.05), //
+            blurRadius: 6, //
+            offset: const Offset(0, 3), //
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), //
         title: Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), //
         ),
         subtitle: subtitle != null && subtitle.isNotEmpty
             ? Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+          padding: const EdgeInsets.only(top: 4.0), //
+          child: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis), //
         )
             : null,
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
+        trailing: const Icon(Icons.chevron_right), //
+        onTap: onTap, //
       ),
     );
   }
 
 
   Widget _buildButtonGroup() {
+    final appLocalizations = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         children: [
           TextButton(
             onPressed: () {
-              widget.onLogout(null);
+              widget.onLogout(null); //
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                    builder: (_) => LoginScreen(onLogin: widget.onLogout)),
+                    builder: (_) => LoginScreen(onLogin: widget.onLogout)), //
               );
             },
-            child: const Text('로그아웃'),
+            child: Text(appLocalizations.logoutButton), // 다국어 적용
           ),
           TextButton(
-            onPressed: _deleteAccount,
-            child: const Text('회원 탈퇴', style: TextStyle(color: Colors.red)),
+            onPressed: _deleteAccount, //
+            child: Text(appLocalizations.deleteAccountButton, style: const TextStyle(color: Colors.red)), // 다국어 적용
           ),
         ],
       ),

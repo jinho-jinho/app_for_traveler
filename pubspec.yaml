@@ -43,6 +43,7 @@ dependencies:
   intl: ^0.19.0
   flutter_localizations:
     sdk: flutter
+
   image_picker: ^1.1.2
   firebase_storage: ^12.4.5
 
@@ -59,7 +60,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  intl_translation: ^0.20.1 # 이 부분도 필요합니다.
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -77,6 +78,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
   assets:
       - lib/screens/assets/atm_icon.png
       - lib/screens/assets/bank_icon.png
@@ -123,3 +125,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_intl:
+  enabled: true

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:app_for_traveler/screens/homeScreen.dart';
+// ──────────────────────────────────────────────────────────────────
+// AppLocalizations 임포트 추가
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // 이 경로가 정확한지 확인하세요.
+// ──────────────────────────────────────────────────────────────────
 
 class LoginScreen extends StatefulWidget {
   final Function(String?) onLogin;
@@ -26,26 +30,32 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoginMode = true;
 
   Future<void> _login() async {
+    // ──────────────────────────────────────────────────────────────────
+    // AppLocalizations 인스턴스 가져오기 (메서드 내에서도 필요할 수 있음)
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+
     final id = _idController.text.trim();
     final pw = _passwordController.text.trim();
     if (id.isEmpty || pw.isEmpty) {
-      setState(() => _errorMessage = 'ID와 비밀번호를 입력해주세요.');
+      setState(() => _errorMessage = appLocalizations.loginErrorEmptyFields); // 다국어 적용
       return;
     }
 
     try {
       final query = await _firestore.collection('users').where('id', isEqualTo: id).limit(1).get();
       if (query.docs.isEmpty) {
-        setState(() => _errorMessage = 'ID가 존재하지 않습니다.');
+        setState(() => _errorMessage = appLocalizations.loginErrorIdNotFound); // 다국어 적용
         return;
       }
       final userDoc = query.docs.first;
       if (userDoc['password'] != pw) {
-        setState(() => _errorMessage = '비밀번호가 일치하지 않습니다.');
+        setState(() => _errorMessage = appLocalizations.loginErrorPasswordMismatch); // 다국어 적용
         return;
       }
 
       widget.onLogin(id);
+      // HomeScreen으로 이동 시 currentUserId와 onLogout을 전달
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -53,11 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } catch (e) {
-      setState(() => _errorMessage = '로그인 중 오류: $e');
+      setState(() => _errorMessage = appLocalizations.loginErrorGeneric(e.toString())); // 다국어 적용 (변수 포함)
     }
   }
 
   Future<void> _signUp() async {
+    // ──────────────────────────────────────────────────────────────────
+    // AppLocalizations 인스턴스 가져오기 (메서드 내에서도 필요할 수 있음)
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+
     final id = _idController.text.trim();
     final pw = _passwordController.text.trim();
     final confirm = _confirmPasswordController.text.trim();
@@ -66,22 +81,22 @@ class _LoginScreenState extends State<LoginScreen> {
     final contact = _contactController.text.trim();
 
     if ([id, pw, confirm, nickname, age, contact].any((e) => e.isEmpty)) {
-      setState(() => _errorMessage = '모든 필드를 입력해주세요.');
+      setState(() => _errorMessage = appLocalizations.signUpErrorAllFieldsRequired); // 다국어 적용
       return;
     }
     if (pw != confirm) {
-      setState(() => _errorMessage = '비밀번호가 일치하지 않습니다.');
+      setState(() => _errorMessage = appLocalizations.signUpErrorPasswordMismatch); // 다국어 적용
       return;
     }
     if (pw.length < 6) {
-      setState(() => _errorMessage = '비밀번호는 최소 6자 이상이어야 합니다.');
+      setState(() => _errorMessage = appLocalizations.signUpErrorPasswordTooShort); // 다국어 적용
       return;
     }
 
     try {
       final query = await _firestore.collection('users').where('id', isEqualTo: id).limit(1).get();
       if (query.docs.isNotEmpty) {
-        setState(() => _errorMessage = '이미 존재하는 ID입니다.');
+        setState(() => _errorMessage = appLocalizations.signUpErrorIdExists); // 다국어 적용
         return;
       }
 
@@ -104,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } catch (e) {
-      setState(() => _errorMessage = '회원가입 오류: $e');
+      setState(() => _errorMessage = appLocalizations.signUpErrorGeneric(e.toString())); // 다국어 적용 (변수 포함)
     }
   }
 
@@ -114,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: obscure,
       keyboardType: type,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: label, // 레이블은 이미 파라미터로 받으므로 변경 없음
         border: const OutlineInputBorder(),
         isDense: true,
         filled: true,
@@ -125,13 +140,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ──────────────────────────────────────────────────────────────────
+    // AppLocalizations 인스턴스 가져오기
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.grey[100],
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(_isLoginMode ? '로그인' : '회원가입', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+        title: Text(
+          _isLoginMode ? appLocalizations.loginScreenTitle : appLocalizations.signUpScreenTitle, // 다국어 적용
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        ),
         centerTitle: true,
         foregroundColor: Colors.black,
       ),
@@ -139,28 +162,28 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildTextField('ID', _idController),
+            _buildTextField(appLocalizations.idHint, _idController), // 다국어 적용
             const SizedBox(height: 12),
-            _buildTextField('비밀번호', _passwordController, obscure: true),
+            _buildTextField(appLocalizations.passwordHint, _passwordController, obscure: true), // 다국어 적용
             if (!_isLoginMode) ...[
               const SizedBox(height: 12),
-              _buildTextField('비밀번호 확인', _confirmPasswordController, obscure: true),
+              _buildTextField(appLocalizations.confirmPasswordHint, _confirmPasswordController, obscure: true), // 다국어 적용
               const SizedBox(height: 12),
-              _buildTextField('닉네임', _nicknameController),
+              _buildTextField(appLocalizations.nicknameHint, _nicknameController), // 다국어 적용
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
-                onChanged: (val) => setState(() => _selectedGender = val ?? '여성'),
-                decoration: const InputDecoration(labelText: '성별', border: OutlineInputBorder()),
-                items: const [
-                  DropdownMenuItem(value: '여성', child: Text('여성')),
-                  DropdownMenuItem(value: '남성', child: Text('남성')),
+                onChanged: (val) => setState(() => _selectedGender = val ?? appLocalizations.genderFemale), // 다국어 적용
+                decoration: InputDecoration(labelText: appLocalizations.genderLabel, border: const OutlineInputBorder()), // 다국어 적용
+                items: [
+                  DropdownMenuItem(value: '여성', child: Text(appLocalizations.genderFemale)), // 다국어 적용
+                  DropdownMenuItem(value: '남성', child: Text(appLocalizations.genderMale)), // 다국어 적용
                 ],
               ),
               const SizedBox(height: 12),
-              _buildTextField('나이', _ageController, type: TextInputType.number),
+              _buildTextField(appLocalizations.ageHint, _ageController, type: TextInputType.number), // 다국어 적용
               const SizedBox(height: 12),
-              _buildTextField('연락처 (카카오톡ID 또는 이메일)', _contactController),
+              _buildTextField(appLocalizations.contactHint, _contactController), // 다국어 적용
             ],
             const SizedBox(height: 16),
             if (_errorMessage != null)
@@ -171,7 +194,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: _isLoginMode ? _login : _signUp,
               style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48), backgroundColor: Colors.black87),
-              child: Text(_isLoginMode ? '로그인' : '회원가입', style: const TextStyle(color: Colors.white)),
+              child: Text(
+                _isLoginMode ? appLocalizations.loginButton : appLocalizations.signUpButton, // 다국어 적용
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
             const SizedBox(height: 8),
             TextButton(
@@ -185,10 +211,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   _nicknameController.clear();
                   _ageController.clear();
                   _contactController.clear();
-                  _selectedGender = '여성'; // 기본값으로 초기화
+                  _selectedGender = appLocalizations.genderFemale; // 다국어 적용
                 });
               },
-              child: Text(_isLoginMode ? '회원가입하기' : '로그인하기'),
+              child: Text(_isLoginMode ? appLocalizations.createAccountButton : appLocalizations.goToLoginButton), // 다국어 적용
             ),
           ],
         ),

@@ -2,15 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'editCompanionScreen.dart';
+// ──────────────────────────────────────────────────────────────────
+// AppLocalizations 임포트 추가
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// ──────────────────────────────────────────────────────────────────
+
 
 class CompanionDetailScreen extends StatefulWidget {
   final String companionId;
   final String currentUserId;
+  final String? currentUserNickname; // ◀️ 이 줄을 추가합니다.
 
-  const CompanionDetailScreen({super.key, required this.companionId, required this.currentUserId});
+  const CompanionDetailScreen({
+    super.key,
+    required this.companionId,
+    required this.currentUserId,
+    this.currentUserNickname, // ◀️ 이 줄을 추가합니다.
+  });
 
   @override
   State<CompanionDetailScreen> createState() => _CompanionDetailScreenState();
+
 }
 
 class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
@@ -27,7 +39,6 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
   bool _hasRequested = false; // 🔹 신청만 했는지 여부
 
 
-
   @override
   void initState() {
     super.initState();
@@ -38,525 +49,708 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
   }
 
   Future<void> _loadData() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context); // nullable로 가져옴
+    // ──────────────────────────────────────────────────────────────────
     try {
       final doc = await _firestore.collection('companions').doc(widget.companionId).get();
-      if (!doc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('동행 정보를 찾을 수 없습니다.')));
-        setState(() => _isLoading = false);
-        return;
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        setState(() {
+          _companionData = {
+            'id': doc.id,
+            'title': data['title'] ?? (appLocalizations?.noTitle ?? '제목 없음'), // 다국어 적용
+            'destination': data['destination'] ?? (appLocalizations?.destinationUndecided ?? '여행지 미정'), // 다국어 적용
+            'content': data['content'] ?? (appLocalizations?.noContent ?? '내용 없음'), // 다국어 적용
+            'currentCount': data['currentCount'] ?? 1,
+            'maxCount': data['maxCount'] ?? 4,
+            'leaderId': data['leaderId'],
+            'leaderNickname': data['leaderNickname'] ?? (appLocalizations?.unknown ?? '알 수 없음'), // 다국어 적용
+            'startDate': (data['startDate'] as Timestamp).toDate(),
+            'endDate': (data['endDate'] as Timestamp).toDate(),
+            'isClosed': data['isClosed'] is bool ? data['isClosed'] : false,
+            'createdAt': (data['createdAt'] as Timestamp).toDate(),
+          };
+          _isLeader = _companionData!['leaderId'] == widget.currentUserId;
+          _isParticipating = _participantList.any((p) => p['id'] == widget.currentUserId);
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.companionNotFound ?? '동행을 찾을 수 없습니다.'))); // 다국어 적용
+          Navigator.pop(context);
+        }
       }
-
-      final data = doc.data()!;
-
-
-      final participantDoc = await _firestore
-          .collection('companions')
-          .doc(widget.companionId)
-          .collection('participants')
-          .doc(widget.currentUserId)
-          .get();
-
-      final requestDoc = await _firestore
-          .collection('companions')
-          .doc(widget.companionId)
-          .collection('requests')
-          .doc(widget.currentUserId)
-          .get(); // ✅ 이걸 setState 밖에서 await 해야 함
-
-      // 모집 상태 판단 로직
-      final currentCount = data['currentCount'] ?? 0;
-      final maxCount = data['maxCount'] ?? 0;
-      final startDate = (data['startDate'] as Timestamp).toDate();
-      final now = DateTime.now();
-
-      final today = DateTime(now.year, now.month, now.day);
-      final start = DateTime(startDate.year, startDate.month, startDate.day);
-
-      bool shouldBeClosed = currentCount >= maxCount || !today.isBefore(start); // now >= startDate
-      bool shouldReopen = currentCount < maxCount && today.isBefore(start);     // now < startDate
-
-      if (shouldBeClosed && !(data['isClosed'] ?? false)) {
-        await _firestore.collection('companions').doc(widget.companionId).update({'isClosed': true});
-        data['isClosed'] = true;
-      } else if (shouldReopen && (data['isClosed'] ?? false)) {
-        await _firestore.collection('companions').doc(widget.companionId).update({'isClosed': false});
-        data['isClosed'] = false;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.companionLoadError(e.toString()) ?? '동행 로드 실패: $e'))); // 다국어 적용
+        Navigator.pop(context);
       }
-
-      // ✅ 모든 비동기 로직 후 setState
+    } finally {
       setState(() {
-        _companionData = data;
-        _isParticipating = participantDoc.exists;
-        _isLeader = participantDoc.data()?['isLeader'] == true;
-        _hasRequested = requestDoc.exists; // ✅ 신청 여부도 상태에 반영
         _isLoading = false;
       });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('오류: ${e.toString()}')));
     }
   }
-
 
   Future<void> _loadComments() async {
-    final snapshot = await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('comments')
-        .orderBy('createdAt', descending: true)
-        .get();
-
-    final comments = snapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      return data;
-    }).cast<Map<String, dynamic>>().toList();
-
-    setState(() => _comments = comments);
-  }
-
-
-  Future<void> _requestJoin() async {
-    final userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-    final userData = userDoc.data();
-
-    if (userData == null) return;
-
-    final nickname = userData['nickname'] ?? '익명';
-    final userGender = userData['gender'];
-    final userAge = userData['age'];
-
-    final genderCondition = _companionData?['genderCondition'];
-    final ageCondition = _companionData?['ageCondition'];
-
-    // ✅ 성별 조건 검사
-    if (genderCondition != null && genderCondition != '무관' && genderCondition != userGender) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('성별 조건이 맞지 않습니다.')),
-      );
-      return;
-    }
-
-    // ✅ 나이 조건 검사
-    if (ageCondition is Map && ageCondition['type'] == '범위') {
-      final min = ageCondition['min'];
-      final max = ageCondition['max'];
-      if (userAge == null || userAge < min || userAge > max) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('나이 조건이 맞지 않습니다.')),
-        );
-        return;
-      }
-    }
-
-    // 🔥 조건을 모두 통과한 경우만 신청 가능
-    await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('requests')
-        .doc(widget.currentUserId)
-        .set({
-      'userId': widget.currentUserId,
-      'userName': nickname,
-      'requestedAt': FieldValue.serverTimestamp(),
-    });
-
-    setState(() {
-      _hasRequested = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('참여 신청 완료')),
-    );
-  }
-
-
-
-  Future<void> _cancelRequest() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context); // nullable로 가져옴
+    // ──────────────────────────────────────────────────────────────────
     try {
-      await _firestore
-          .collection('companions')
-          .doc(widget.companionId)
-          .collection('requests')
-          .doc(widget.currentUserId)
-          .delete();
+      final snapshot = await _firestore
+          .collection('companion_comments')
+          .where('companionId', isEqualTo: widget.companionId)
+          .orderBy('createdAt', descending: false)
+
+          .get();
 
       setState(() {
-        _hasRequested = false;
+        _comments = snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final comment = {
+            'id': doc.id,
+            'authorId': data['authorId'] as String,
+            'authorNickname': data['authorNickname'] as String? ?? (appLocalizations?.unknown ?? '알 수 없음'), // 다국어 적용
+            'content': data['content'] as String,
+            'createdAt': (data['createdAt'] as Timestamp).toDate(),
+            'parentId': data['parentId'] as String?,
+            'deleted': data['deleted'] as bool? ?? false,
+          };
+          _replyControllers[doc.id] = TextEditingController(); // 대댓글 컨트롤러 초기화
+          return comment;
+        }).toList();
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('참여 신청이 취소되었습니다.')),
-      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('신청 취소 실패: ${e.toString()}')),
-      );
-    }
-  }
-
-
-  Future<void> _postComment() async {
-    if (_commentController.text.trim().isEmpty) return;
-
-    final userDoc = await _firestore.collection('users').doc(widget.currentUserId).get();
-    final nickname = userDoc.data()?['nickname'] ?? '익명';
-
-    await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('comments')
-        .add({
-      'authorId': widget.currentUserId,
-      'authorNickname': nickname,
-      'text': _commentController.text.trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'reply': null,
-      'repliedBy': null,
-    });
-
-    _commentController.clear();
-    _loadComments();
-  }
-
-  Future<void> _leaveCompanion() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('참여 취소'),
-        content: const Text('이 동행에서 나가시겠습니까?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('아니오')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('예')),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final docRef = _firestore.collection('companions').doc(widget.companionId);
-
-      await _firestore.runTransaction((tx) async {
-        final snapshot = await tx.get(docRef);
-        final data = snapshot.data()!;
-
-
-
-
-
-        final currentCount = data['currentCount'] ?? 1;
-
-
-        tx.delete(docRef.collection('participants').doc(widget.currentUserId));
-
-        tx.delete(
-          _firestore.collection('users').doc(widget.currentUserId)
-              .collection('joinedCompanions').doc(widget.companionId),
-        );
-
-        tx.update(docRef, {
-          'currentCount': currentCount - 1,
-          'isClosed': false,
-        });
-      });
-
-      _loadData();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('동행 참여가 취소되었습니다.')));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('오류: ${e.toString()}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.commentsLoadError(e.toString()) ?? '댓글 로드 실패: $e'))); // 다국어 적용
+      }
     }
   }
 
   Future<void> _loadRequests() async {
-    final snapshot = await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('requests')
-        .get();
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context); // nullable로 가져옴
+    // ──────────────────────────────────────────────────────────────────
+    try {
+      final doc = await _firestore.collection('companions').doc(widget.companionId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final List<dynamic> requests = data['requests'] ?? [];
+        final List<dynamic> participants = data['participants'] ?? [];
 
-    final requests = snapshot.docs.map((doc) {
-      final data = doc.data();
-      data['id'] = doc.id;
-      return data;
-    }).toList();
+        List<Map<String, dynamic>> fetchedRequests = [];
+        for (String userId in requests) {
+          final userDoc = await _firestore.collection('users').doc(userId).get();
+          if (userDoc.exists) {
+            fetchedRequests.add({
+              'id': userId,
+              'userName': (userDoc.data() as Map<String, dynamic>)['nickname'] ?? (appLocalizations?.unknown ?? '알 수 없음'), // 다국어 적용
+            });
+          }
+        }
 
-    setState(() => _requests = requests);
+        setState(() {
+          _requests = fetchedRequests;
+          _hasRequested = requests.contains(widget.currentUserId) && !participants.contains(widget.currentUserId);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.requestsLoadError(e.toString()) ?? '신청자 목록 로드 실패: $e'))); // 다국어 적용
+      }
+    }
   }
 
   Future<void> _loadParticipants() async {
-    final snapshot = await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('participants')
-        .get();
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context); // nullable로 가져옴
+    // ──────────────────────────────────────────────────────────────────
+    try {
+      final doc = await _firestore.collection('companions').doc(widget.companionId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final List<dynamic> participants = data['participants'] ?? [];
 
-    List<Map<String, dynamic>> participants = [];
-
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      // gender 정보가 없으면 users에서 보충
-      if (data['gender'] == null) {
-        final userSnapshot = await _firestore.collection('users').doc(data['userId']).get();
-        final userGender = userSnapshot.data()?['gender'];
-        data['gender'] = userGender ?? '미입력';
+        List<Map<String, dynamic>> fetchedParticipants = [];
+        for (String userId in participants) {
+          final userDoc = await _firestore.collection('users').doc(userId).get();
+          if (userDoc.exists) {
+            fetchedParticipants.add({
+              'id': userId,
+              'userName': (userDoc.data() as Map<String, dynamic>)['nickname'] ?? (appLocalizations?.unknown ?? '알 수 없음'), // 다국어 적용
+            });
+          }
+        }
+        setState(() {
+          _participantList = fetchedParticipants;
+          _isParticipating = _participantList.any((p) => p['id'] == widget.currentUserId);
+        });
       }
-      participants.add(data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations?.participantsLoadError(e.toString()) ?? '참여자 목록 로드 실패: $e'))); // 다국어 적용
+      }
     }
-
-    setState(() {
-      _participantList = participants;
-    });
   }
 
 
+  Future<void> _applyForCompanion() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    if (_companionData == null || _companionData!['isClosed'] || _companionData!['currentCount'] >= _companionData!['maxCount']) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.companionApplicationNotPossible))); // 다국어 적용
+      return;
+    }
+
+    try {
+      await _firestore.collection('companions').doc(widget.companionId).update({
+        'requests': FieldValue.arrayUnion([widget.currentUserId])
+      });
+      setState(() {
+        _hasRequested = true;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.applicationSentSuccess))); // 다국어 적용
+      }
+      _loadRequests(); // 신청자 목록 새로고침
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.applicationSendError(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+  Future<void> _cancelApplication() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    try {
+      await _firestore.collection('companions').doc(widget.companionId).update({
+        'requests': FieldValue.arrayRemove([widget.currentUserId])
+      });
+      setState(() {
+        _hasRequested = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.applicationCancelledSuccess))); // 다국어 적용
+      }
+      _loadRequests(); // 신청자 목록 새로고침
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.applicationCancelError(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+
+
+  Future<void> _addComment([String? parentId]) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final controller = parentId == null ? _commentController : _replyControllers[parentId];
+    if (controller == null || controller.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.emptyCommentWarning))); // 다국어 적용
+      return;
+    }
+
+    try {
+      await _firestore.collection('companion_comments').add({
+        'companionId': widget.companionId,
+        'authorId': widget.currentUserId,
+        'authorNickname': widget.currentUserNickname ?? widget.currentUserId,
+        'content': controller.text.trim(),
+        'createdAt': Timestamp.now(),
+        'parentId': parentId,
+        'deleted': false,
+      });
+      controller.clear();
+      _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentAddedSuccess))); // 다국어 적용
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentAddFailed(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+
+  Future<void> _deleteComment(String commentId) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.deleteCommentTitle), // 다국어 적용
+          content: Text(appLocalizations.confirmDeleteComment), // 다국어 적용
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.deleteButton), // 다국어 적용 (재사용)
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
+    try {
+      // 대댓글이 없는 경우에만 삭제 (실제 삭제)
+      // 대댓글이 있는 경우 content를 "삭제된 댓글입니다"로 변경
+      final replySnapshot = await _firestore
+          .collection('companion_comments')
+          .where('parentId', isEqualTo: commentId)
+          .get();
+
+      if (replySnapshot.docs.isEmpty) {
+        await _firestore.collection('companion_comments').doc(commentId).delete();
+      } else {
+        await _firestore.collection('companion_comments').doc(commentId).update({
+          'content': appLocalizations.deletedComment, // 다국어 적용
+          'deleted': true,
+        });
+      }
+
+      _loadComments();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentDeletedSuccess))); // 다국어 적용
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentDeleteFailed(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+
+  Future<void> _editComment(String commentId, String currentContent) async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final TextEditingController editController = TextEditingController(text: currentContent);
+
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.editCommentTitle), // 다국어 적용
+          content: TextField(
+            controller: editController,
+            decoration: InputDecoration(hintText: appLocalizations.editCommentHint), // 다국어 적용
+            maxLines: 3,
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.saveButton), // 다국어 적용
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true && editController.text.trim().isNotEmpty) {
+      try {
+        await _firestore.collection('companion_comments').doc(commentId).update({
+          'content': editController.text.trim(),
+          'createdAt': Timestamp.now(), // 수정 시간 업데이트 (선택 사항)
+        });
+        _loadComments();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentEditedSuccess))); // 다국어 적용
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.commentEditFailed(e.toString())))); // 다국어 적용
+        }
+      }
+    } else if (confirm == true && editController.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.emptyCommentWarning))); // 다국어 적용 (재사용)
+      }
+    }
+  }
+
   Future<void> _acceptRequest(String userId, String userName) async {
-    final docRef = _firestore.collection('companions').doc(widget.companionId);
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    if (_companionData == null || _companionData!['isClosed']) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.recruitmentClosedWarning))); // 다국어 적용
+      return;
+    }
+    if (_companionData!['currentCount'] >= _companionData!['maxCount']) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.maxParticipantsReached))); // 다국어 적용
+      return;
+    }
 
-    await _firestore.runTransaction((tx) async {
-      final snapshot = await tx.get(docRef);
-      final data = snapshot.data()!;
-      final currentCount = data['currentCount'] ?? 0;
-      final maxCount = data['maxCount'] ?? 0;
+    try {
+      final docRef = _firestore.collection('companions').doc(widget.companionId);
+      await _firestore.runTransaction((transaction) async {
+        final docSnapshot = await transaction.get(docRef);
+        final currentData = docSnapshot.data() as Map<String, dynamic>;
+        final currentParticipants = List<String>.from(currentData['participants'] ?? []);
+        final currentRequests = List<String>.from(currentData['requests'] ?? []);
+        final currentCount = currentData['currentCount'] ?? 1;
 
-      if (currentCount >= maxCount) throw Exception('정원이 가득 찼습니다.');
-
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userGender = userDoc.data()?['gender'] ?? '미입력';
-
-      tx.set(docRef.collection('participants').doc(userId), {
-        'userId': userId,
-        'userName': userName,
-        'joinedAt': FieldValue.serverTimestamp(),
-        'isLeader': false,
-        'gender': userGender,
+        if (!currentParticipants.contains(userId) && currentCount < currentData['maxCount']) {
+          currentParticipants.add(userId);
+          currentRequests.remove(userId);
+          transaction.update(docRef, {
+            'participants': currentParticipants,
+            'requests': currentRequests,
+            'currentCount': currentCount + 1,
+            'isClosed': (currentCount + 1 >= currentData['maxCount'])
+          });
+        }
       });
-
-      tx.update(docRef, {
-        'currentCount': currentCount + 1,
-        'isClosed': (currentCount + 1) >= maxCount,
-      });
-
-      tx.delete(docRef.collection('requests').doc(userId));
-    });
-
-    _loadData();
-    _loadRequests();
-    _loadParticipants();
+      _loadData();
+      _loadRequests();
+      _loadParticipants();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.participantAcceptedSuccess(userName)))); // 다국어 적용
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.acceptRequestFailed(e.toString())))); // 다국어 적용
+      }
+    }
   }
 
   Future<void> _rejectRequest(String userId) async {
-    await _firestore
-        .collection('companions')
-        .doc(widget.companionId)
-        .collection('requests')
-        .doc(userId)
-        .delete();
-    _loadRequests();
-  }
-
-  Future<void> _kickParticipant(String userId) async {
-    final docRef = _firestore.collection('companions').doc(widget.companionId);
-
-    await _firestore.runTransaction((tx) async {
-      final snapshot = await tx.get(docRef);
-      final data = snapshot.data()!;
-      final currentCount = data['currentCount'] ?? 1;
-
-      tx.delete(docRef.collection('participants').doc(userId));
-
-      tx.update(docRef, {
-        'currentCount': currentCount - 1,
-        'isClosed': false,
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    try {
+      await _firestore.collection('companions').doc(widget.companionId).update({
+        'requests': FieldValue.arrayRemove([userId])
       });
-    });
-
-    _loadData();
-    _loadParticipants();
+      _loadRequests();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.requestRejectedSuccess))); // 다국어 적용
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.rejectRequestFailed(e.toString())))); // 다국어 적용
+      }
+    }
   }
+
+  Future<void> _leaveCompanion() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.leaveCompanionTitle), // 다국어 적용
+          content: Text(appLocalizations.confirmLeaveCompanion), // 다국어 적용
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.leaveButton), // 다국어 적용
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
+    try {
+      final docRef = _firestore.collection('companions').doc(widget.companionId);
+      await _firestore.runTransaction((transaction) async {
+        final docSnapshot = await transaction.get(docRef);
+        final currentData = docSnapshot.data() as Map<String, dynamic>;
+        final currentParticipants = List<String>.from(currentData['participants'] ?? []);
+        final currentCount = currentData['currentCount'] ?? 1;
+
+        if (currentParticipants.contains(widget.currentUserId)) {
+          currentParticipants.remove(widget.currentUserId);
+          transaction.update(docRef, {
+            'participants': currentParticipants,
+            'currentCount': currentCount - 1,
+            'isClosed': false, // 인원이 줄면 모집 마감 해제
+          });
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.leftCompanionSuccess))); // 다국어 적용
+      }
+      Navigator.pop(context, true); // 목록 화면으로 돌아가기
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.leaveCompanionFailed(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+
+  Future<void> _deleteCompanion() async {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.deleteCompanionTitle), // 다국어 적용
+          content: Text(appLocalizations.confirmDeleteCompanion), // 다국어 적용
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(appLocalizations.deleteButton), // 다국어 적용 (재사용)
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
+    try {
+      await _firestore.collection('companions').doc(widget.companionId).delete();
+      // 관련 댓글도 삭제
+      final commentsSnapshot = await _firestore
+          .collection('companion_comments')
+          .where('companionId', isEqualTo: widget.companionId)
+          .get();
+      for (var doc in commentsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.companionDeletedSuccess))); // 다국어 적용
+      }
+      Navigator.pop(context, true); // 동행 목록으로 돌아감
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(appLocalizations.companionDeleteFailed(e.toString())))); // 다국어 적용
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_companionData == null) return const Scaffold(body: Center(child: Text('동행 정보를 불러올 수 없습니다.')));
-
-    final dateFormat = DateFormat('yyyy.MM.dd');
-    final dateRange =
-        '${dateFormat.format((_companionData!['startDate'] as Timestamp).toDate())} ~ ${dateFormat.format((_companionData!['endDate'] as Timestamp).toDate())}';
-
-    Widget buttonWidget = const SizedBox.shrink(); // 기본값 (안 보임)
-    if (_isParticipating) {
-      // ✅ 참여자
-      buttonWidget = ElevatedButton.icon(
-        onPressed: null,
-        icon: const Icon(Icons.check, color: Colors.black87),
-        label: const Text('참여 중'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[200],
-          foregroundColor: Colors.black87,
-          minimumSize: const Size(double.infinity, 48),
-        ),
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(appLocalizations.loadingText)), // 다국어 적용
+        body: const Center(child: CircularProgressIndicator()),
       );
-    } else if (_hasRequested) {
-      // ✅ 신청 완료 → 신청 취소 가능
-      buttonWidget = ElevatedButton.icon(
-        onPressed: _cancelRequest,
-        icon: const Icon(Icons.cancel),
-        label: const Text('신청 취소'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red[200],
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 48),
-        ),
-      );
-    } else if (!(_companionData!['isClosed'] ?? false)) {
-      // ✅ 신청 전 → 신청하기 가능
-      buttonWidget = ElevatedButton.icon(
-        onPressed: _requestJoin,
-        icon: const Icon(Icons.group_add),
-        label: const Text('참여 신청하기'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black54,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 48),
-        ),
-      );
-    } else {
-      buttonWidget = const SizedBox.shrink();
     }
 
+    if (_companionData == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(appLocalizations.errorText)), // 다국어 적용
+        body: Center(child: Text(appLocalizations.companionDataNotFound)), // 다국어 적용
+      );
+    }
 
+    final dateFormat = DateFormat('yyyy.MM.dd');
+    final dateRange = '${dateFormat.format(_companionData!['startDate'])} ~ ${dateFormat.format(_companionData!['endDate'])}';
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: Colors.grey[100],
-        elevation: 0,
-        title: const Text('동행 상세 정보', style: TextStyle(fontWeight: FontWeight.bold)),
-        foregroundColor: Colors.black87,
+        title: Text(_companionData!['title']),
+        actions: [
+          if (_isLeader)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: appLocalizations.editButton, // 다국어 적용 (재사용)
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditCompanionScreen(
+                      companionId: widget.companionId,
+                      companionData: _companionData!,
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  _loadData();
+                }
+              },
+            ),
+          if (_isLeader)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              tooltip: appLocalizations.deleteButton, // 다국어 적용 (재사용)
+              onPressed: _deleteCompanion,
+            ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _companionData!['title'],
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  appLocalizations.destinationPrefix(_companionData!['destination']), // 다국어 적용
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildInfoRow(Icons.person, appLocalizations.leaderLabel, _companionData!['leaderNickname']), // 다국어 적용
+                        _buildInfoRow(Icons.groups, appLocalizations.participantsLabel, '${_companionData!['currentCount']} / ${_companionData!['maxCount']}'), // 다국어 적용
+                        _buildInfoRow(Icons.calendar_today, appLocalizations.periodLabel, dateRange), // 다국어 적용
+                        if (_companionData!['isClosed'])
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(appLocalizations.recruitmentClosed, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)), // 다국어 적용 (재사용)
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  appLocalizations.contentLabel, // 다국어 적용
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(_companionData!['content']),
+                ),
+                if (_isLeader) _buildRequestsAndParticipants(), // 리더에게만 보여지는 신청자 및 참여자 목록
+                const SizedBox(height: 24),
+                _buildParticipantsList(),
+                const SizedBox(height: 24),
+                _buildCommentsSection(), // 댓글 섹션
+                const SizedBox(height: 80), // 하단 댓글 입력창 때문에 스크롤 가능하게 여유 공간 확보
+              ],
+            ),
+          ),
+          _buildCommentInputField(), // 댓글 입력창
+        ],
+      ),
+      bottomNavigationBar: _isLeader
+          ? null // 리더는 하단 버튼 없음
+          : Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 1,
+              blurRadius: 5,
+            ),
+          ],
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildCompanionInfo(dateRange),
-            const SizedBox(height: 16),
+            if (_isParticipating)
+              ElevatedButton(
+                onPressed: _leaveCompanion,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: Text(appLocalizations.leaveCompanionButton), // 다국어 적용
+              )
+            else if (_hasRequested)
+              ElevatedButton(
+                onPressed: _cancelApplication,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: Text(appLocalizations.cancelApplicationButton), // 다국어 적용
+              )
+            else
+              ElevatedButton(
+                onPressed: _applyForCompanion,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: Text(appLocalizations.applyForCompanionButton), // 다국어 적용
+              ),
 
-            // 💡 조건에 따른 참여 버튼 표시
-            if (!_isLeader) buttonWidget,
-
-            const SizedBox(height: 24),
-
-            // ✅ 신청자 및 참여자 목록은 파티장일 경우에만
-            if (_isLeader) _buildRequestsAndParticipants(),
-            if (_isLeader) const SizedBox(height: 24), // 여백 추가
-            if (_isParticipating || _isLeader) _buildParticipantsOnlySection(),
-
-            const SizedBox(height: 24),
-
-
-            // ✅ 댓글 섹션은 가장 아래에 위치
-            _buildCommentSection(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildParticipantsOnlySection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
         children: [
-          const Text('파티원 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          ..._participantList.map((user) => ListTile(
-            title: Text('👤  ${user['userName']}'), // 닉네임만 표시
-            trailing: const Icon(Icons.info_outline),
-            onTap: () async {
-              final userDetail = await _firestore.collection('users').doc(user['userId']).get();
-              final detail = userDetail.data();
-              if (detail != null) {
-                showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('참여자 정보'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('ID: ${detail['id'] ?? '없음'}'),
-                        Text('성별: ${detail['gender'] ?? '모름'}'),
-                        Text('나이: ${detail['age']?.toString() ?? '모름'}'),
-                        Text('연락처: ${detail['contact'] ?? '미공개'}'),
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('닫기'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-            },
-          )),
+          Icon(icon, color: Colors.blue, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
   }
-
-
-  Widget _buildCompanionInfo(String dateRange) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: _firestore.collection('companions').doc(widget.companionId).snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final currentCount = data['currentCount'] ?? 0;
-        final maxCount = data['maxCount'] ?? 0;
-
-        final List<Map<String, dynamic>> allParticipants = List<Map<String, dynamic>>.from(_participantList);
-
-        // 성비 계산: 파티장 포함
-        final int maleCount = allParticipants
-            .where((p) => (p['gender']?.toString().contains('남') ?? false))
-            .length;
-
-        final int femaleCount = allParticipants
-            .where((p) => (p['gender']?.toString().contains('여') ?? false))
-            .length;
-
-
-
-
-
-        final ageConditionRaw = data['ageCondition'];
-        String ageText = '연령 무관';
-
-        if (ageConditionRaw is Map && ageConditionRaw['type'] == '범위') {
-          final min = ageConditionRaw['min'] ?? '?';
-          final max = ageConditionRaw['max'] ?? '?';
-          ageText = '$min세 ~ $max세';
-        } else if (ageConditionRaw is String) {
-          ageText = ageConditionRaw;
-        }
-
-
-
-        return Container(
+  Widget _buildRequestsAndParticipants() {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -566,297 +760,270 @@ class _CompanionDetailScreenState extends State<CompanionDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(data['title'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: (data['isClosed'] ?? false) ? Colors.grey[300] : Colors.green[100],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      (data['isClosed'] ?? false) ? '모집 완료' : '모집 중',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: (data['isClosed'] ?? false) ? Colors.grey[600] : Colors.green[800],
-                      ),
-                    ),
-                  ),
-
-                  if (_isLeader || _isParticipating)
-                    PopupMenuButton<String>(
-                      onSelected: (value) async {
-                        if (value == 'edit') {
-                          await Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => EditCompanionScreen(companionId: widget.companionId)),
-                          );
-                          _loadData();
-                        } else if (value == 'delete') {
-                          _deleteCompanion();
-                        } else if (value == 'leave') {
-                          _leaveCompanion();
-                        } else if (value == 'toggle_close') {
-                          final updated = !(_companionData!['isClosed'] ?? false);
-                          await _firestore.collection('companions').doc(widget.companionId).update({
-                            'isClosed': updated,
-                          });
-                          _loadData();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(updated ? '모집이 마감되었습니다.' : '모집이 재개되었습니다.')),
-                          );
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        if (_isLeader) const PopupMenuItem(value: 'edit', child: Text('수정')),
-                        if (_isLeader) const PopupMenuItem(value: 'delete', child: Text('삭제')),
-                        if (_isLeader)
-                          PopupMenuItem(
-                            value: 'toggle_close',
-                            child: Text(_companionData!['isClosed'] ? '모집 재개' : '모집 마감'),
-                          ),
-                        if (!_isLeader && _isParticipating)
-                          const PopupMenuItem(value: 'leave', child: Text('동행 참여 취소')),
-                      ],
-                    ),
-                ],
-              ),
-
+              Text(appLocalizations.applicantsListTitle, style: const TextStyle(fontWeight: FontWeight.bold)), // 다국어 적용
               const SizedBox(height: 8),
-              Text('📍 ${data['destination'] ?? '여행지 미정'}', style: const TextStyle(color: Colors.black87)),
-
-              const SizedBox(height: 12),
-              Text(data['content'] ?? '', style: const TextStyle(color: Colors.black87)),
-
-              const SizedBox(height: 4),
-              Text('🗓 $dateRange', style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 8),
-              Text('👥 $currentCount / $maxCount', style: const TextStyle(color: Colors.black54)),
-
-
-
-
-              Text('✅ 참여 조건: ${data['genderCondition'] ?? '무관'} / $ageText',
-                style: const TextStyle(color: Colors.black87),
-              ),
-              Text('👩🏻👨🏻 성비 현황: 남 $maleCount명 / 여 $femaleCount명',
-                style: const TextStyle(color: Colors.black54),
-              ),
-
-
-
-              const SizedBox(height: 12),
-              Text('파티장: ${data['leaderName'] ?? ''}', style: const TextStyle(color: Colors.grey)),
+              if (_requests.isEmpty) Text(appLocalizations.noApplicants), // 다국어 적용
+              ..._requests.map((user) => ListTile(
+                title: Text(user['userName'] ?? appLocalizations.unknown), // 다국어 적용 (재사용)
+                subtitle: Text('ID: ${user['id']}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.check, color: Colors.green),
+                      onPressed: () => _acceptRequest(user['id'], user['userName']),
+                      tooltip: appLocalizations.acceptButton, // 다국어 적용
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.red),
+                      onPressed: () => _rejectRequest(user['id']),
+                      tooltip: appLocalizations.rejectButton, // 다국어 적용
+                    ),
+                  ],
+                ),
+              )),
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildParticipantsList() {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(appLocalizations.participantsSectionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // 다국어 적용
+        const SizedBox(height: 8),
+        if (_participantList.isEmpty) Text(appLocalizations.noParticipants), // 다국어 적용
+        ..._participantList.map((user) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.blueAccent,
+                child: Icon(Icons.person, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Text(user['userName'] ?? appLocalizations.unknown), // 다국어 적용 (재사용)
+              if (user['id'] == _companionData!['leaderId'])
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Text(appLocalizations.leaderLabel, style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)), // 다국어 적용 (재사용)
+                ),
+            ],
+          ),
+        )),
+      ],
+    );
+  }
+
+  Widget _buildCommentsSection() {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final Map<String, List<Map<String, dynamic>>> groupedComments = {};
+    for (var comment in _comments) {
+      if (comment['parentId'] == null) {
+        groupedComments[comment['id']] = [];
+      }
+    }
+    for (var comment in _comments) {
+      if (comment['parentId'] != null && groupedComments.containsKey(comment['parentId'])) {
+        groupedComments[comment['parentId']]!.add(comment);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(appLocalizations.commentsSectionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // 다국어 적용
+        const SizedBox(height: 12),
+        if (_comments.isEmpty)
+          Center(child: Text(appLocalizations.noCommentsYet)), // 다국어 적용
+        ...groupedComments.keys.map((commentId) {
+          final comment = _comments.firstWhere((c) => c['id'] == commentId);
+          final replies = groupedComments[commentId]!;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildCommentItem(comment, isReply: false),
+              ...replies.map((reply) => Padding(
+                padding: const EdgeInsets.only(left: 32.0),
+                child: _buildCommentItem(reply, isReply: true),
+              )),
+              if (!comment['deleted'])
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, bottom: 8.0),
+                  child: TextButton(
+                    onPressed: () => _addReply(commentId),
+                    child: Text(appLocalizations.replyButton), // 다국어 적용
+                  ),
+                ),
+            ],
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildCommentItem(Map<String, dynamic> comment, {required bool isReply}) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    final formattedDate = DateFormat('yyyy.MM.dd HH:mm').format(comment['createdAt']);
+    return Card(
+      margin: EdgeInsets.only(bottom: 8.0, left: isReply ? 0 : 0),
+      elevation: 1,
+      color: isReply ? Colors.blueGrey[50] : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.grey,
+                  child: Icon(Icons.person, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    comment['authorNickname'],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                if (comment['authorId'] == widget.currentUserId && !comment['deleted'])
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _editComment(comment['id'], comment['content']);
+                      } else if (value == 'delete') {
+                        _deleteComment(comment['id']);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Text(appLocalizations.editButton), // 다국어 적용 (재사용)
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Text(appLocalizations.deleteButton), // 다국어 적용 (재사용)
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(comment['content']),
+            if (comment['deleted'])
+              Text(
+                appLocalizations.deletedCommentIndicator, // 다국어 적용
+                style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+              ),
+            if (isReply && !comment['deleted'])
+              TextField(
+                controller: _replyControllers[comment['id']],
+                decoration: InputDecoration(
+                  hintText: appLocalizations.replyHint, // 다국어 적용
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onSubmitted: (value) => _addComment(comment['parentId'] ?? comment['id']),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addReply(String parentId) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.writeReplyTitle), // 다국어 적용
+          content: TextField(
+            controller: _replyControllers[parentId],
+            decoration: InputDecoration(hintText: appLocalizations.replyContentHint), // 다국어 적용
+            maxLines: 3,
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(appLocalizations.cancelButton), // 다국어 적용 (재사용)
+            ),
+            TextButton(
+              onPressed: () {
+                _addComment(parentId);
+                Navigator.of(context).pop();
+              },
+              child: Text(appLocalizations.writeButton), // 다국어 적용 (재사용)
+            ),
+          ],
         );
       },
     );
   }
 
-
-  Future<void> _deleteCompanion() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('삭제 확인'),
-        content: const Text('정말 이 동행을 삭제하시겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('아니오'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('예'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      final docRef = _firestore.collection('companions').doc(widget.companionId);
-
-      // 하위 컬렉션 삭제 (participants, comments, requests)
-      final participantDocs = await docRef.collection('participants').get();
-      for (final doc in participantDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      final commentDocs = await docRef.collection('comments').get();
-      for (final doc in commentDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      final requestDocs = await docRef.collection('requests').get();
-      for (final doc in requestDocs.docs) {
-        await doc.reference.delete();
-      }
-
-      // 메인 companion 문서 삭제
-      await docRef.delete();
-
-      if (!mounted) return;
-      Navigator.pop(context); // 현재 페이지 종료
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: ${e.toString()}')),
-      );
-    }
-  }
-
-  Future<void> _replyToComment(String commentId) async {
-    final controller = _replyControllers[commentId];
-    if (controller == null || controller.text.trim().isEmpty) return;
-
-    try {
-      await _firestore
-          .collection('companions')
-          .doc(widget.companionId)
-          .collection('comments')
-          .doc(commentId)
-          .update({
-        'reply': controller.text.trim(),
-        'repliedBy': widget.currentUserId,
-      });
-
-      controller.clear();
-      _loadComments();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('답변 등록 실패: ${e.toString()}')),
-      );
-    }
-  }
-
-
-  Widget _buildCommentSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+  Widget _buildCommentInputField() {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('댓글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(
+        child: SafeArea(
+          child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _commentController,
-                  decoration: const InputDecoration(
-                    hintText: '댓글을 입력하세요...',
-                    border: OutlineInputBorder(),
-                    isDense: true,
+                  decoration: InputDecoration(
+                    hintText: appLocalizations.commentInputHint, // 다국어 적용
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.send, color: Colors.black54),
-                onPressed: _postComment,
+              ElevatedButton(
+                onPressed: _addComment,
+                child: Text(appLocalizations.addCommentButton), // 다국어 적용
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ..._comments.map((comment) {
-            final commentId = comment['id'];
-            final controller = _replyControllers.putIfAbsent(commentId, () => TextEditingController());
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(comment['authorNickname'] ?? '알 수 없음', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(comment['text'] ?? ''),
-                  const SizedBox(height: 8),
-                  if ((comment['reply'] ?? '') != '')
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('답변: ${comment['reply']}', style: const TextStyle(color: Colors.blue)),
-                    )
-                  else if (_isLeader)
-                    Column(
-                      children: [
-                        TextField(controller: controller, decoration: const InputDecoration(hintText: '답변을 입력하세요...')),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => _replyToComment(commentId),
-                            child: const Text('답변 달기'),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            );
-          }),
-        ],
+        ),
       ),
     );
   }
-
-Widget _buildRequestsAndParticipants() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: 24),
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('신청자 목록', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            if (_requests.isEmpty) const Text('현재 신청자가 없습니다.'),
-            ..._requests.map((user) => ListTile(
-              title: Text(user['userName'] ?? '알 수 없음'),
-              subtitle: Text('ID: ${user['id']}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Colors.green),
-                    onPressed: () => _acceptRequest(user['id'], user['userName']),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.clear, color: Colors.red),
-                    onPressed: () => _rejectRequest(user['id']),
-                  ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    ],
-  );
-}
 }

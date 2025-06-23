@@ -1,0 +1,874 @@
+{
+  "@@locale": "ko",
+  "loginScreenTitle": "로그인",
+  "signUpScreenTitle": "회원가입",
+  "idHint": "ID",
+  "passwordHint": "비밀번호",
+  "confirmPasswordHint": "비밀번호 확인",
+  "nicknameHint": "닉네임",
+  "genderLabel": "성별",
+  "genderFemale": "여성",
+  "genderMale": "남성",
+  "ageHint": "나이",
+  "contactHint": "연락처 (카카오톡ID 또는 이메일)",
+  "loginButton": "로그인",
+  "signUpButton": "회원가입",
+  "createAccountButton": "회원가입하기",
+  "goToLoginButton": "로그인하기",
+  "loginErrorEmptyFields": "ID와 비밀번호를 입력해주세요.",
+  "loginErrorIdNotFound": "ID가 존재하지 않습니다.",
+  "loginErrorPasswordMismatch": "비밀번호가 일치하지 않습니다.",
+  "loginErrorGeneric": "로그인 중 오류: {error}",
+  "@loginErrorGeneric": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "signUpErrorAllFieldsRequired": "모든 필드를 입력해주세요.",
+  "signUpErrorPasswordMismatch": "비밀번호가 일치하지 않습니다.",
+  "signUpErrorPasswordTooShort": "비밀번호는 최소 6자 이상이어야 합니다.",
+  "signUpErrorIdExists": "이미 존재하는 ID입니다.",
+  "signUpErrorGeneric": "회원가입 오류: {error}",
+  "@signUpErrorGeneric": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "myPageScreenTitle": "마이페이지",
+  "loadingText": "로딩 중...",
+  "editProfileButton": "프로필 수정",
+  "myActivitiesHeader": "내 활동",
+  "myFavoritesTitle": "내 즐겨찾기",
+  "myScheduleTitle": "내 일정",
+  "myPostsTitle": "내 게시물",
+  "noMyPosts": "작성한 게시물이 없습니다.",
+  "noTitle": "제목 없음",
+  "authorPrefix": "작성자: ",
+  "unknown": "알 수 없음",
+  "myCommentsTitle": "내 댓글",
+  "noMyComments": "작성한 댓글이 없습니다.",
+  "noContent": "내용 없음",
+  "originalPostPrefix": "원본 게시물: ",
+  "unknownPost": "알 수 없는 게시물",
+  "settingsHeader": "설정",
+  "notificationSettingsTitle": "알림 설정",
+  "helpCenterTitle": "도움말 및 문의",
+  "aboutAppTitle": "앱 정보",
+  "logoutButton": "로그아웃",
+  "deleteAccountButton": "계정 삭제",
+  "editProfileTitle": "프로필 편집",
+  "saveButton": "저장",
+  "cancelButton": "취소",
+  "profileUpdateSuccess": "프로필이 성공적으로 업데이트되었습니다!",
+  "profileUpdateFailed": "프로필 업데이트 실패:",
+
+  "appTitle": "여행자 앱",
+  "notificationsTooltip": "알림",
+  "weatherTooltip": "날씨 정보",
+  "homeTab": "홈",
+  "mapTab": "지도",
+  "boardTab": "게시판",
+  "myPageTab": "MY",
+  "createPostTooltip": "게시물 작성",
+  "currentParticipants": "참여 인원",
+  "closedStatus": "마감됨",
+  "disasterAlertTitle": "재난 문자 알림",
+  "noDisasterMessage": "현재 표시할 재난 문자가 없습니다.",
+  "weatherLoadingError": "날씨 정보를 불러오지 못했습니다.",
+  "currentWeatherInfo": "현재 날씨 정보",
+  "temperature": "온도",
+  "weatherCondition": "날씨",
+  "humidity": "습도",
+  "fineDust": "미세먼지",
+  "clearSky": "맑음",
+  "clouds": "흐림",
+  "rain": "비",
+  "snow": "눈",
+  "welcomeMessage": "환영합니다,",
+  "currentLocationInfo": "현재 위치: 대한민국 경상북도 구미시",
+  "hotspotsTitle": "나만의 핫플레이스",
+  "addPlaceButton": "장소 추가",
+  "findCompanionTitle": "동행 찾기",
+  "noCompanions": "아직 동행 게시물이 없습니다.",
+  "viewAllCompanionsButton": "모든 동행 보기",
+  "recentPostsTitle": "최근 게시물",
+  "noRecentPosts": "아직 최근 게시물이 없습니다.",
+  "viewMorePostsButton": "더 많은 게시물 보기",
+
+  "startDateBeforeEndDateError": "출발일은 도착일 이전이어야 합니다.",
+  "editFailed": "수정 실패",
+  "editScheduleTitle": "일정 수정",
+  "editTravelInfo": "여행 정보 수정",
+  "scheduleTitleLabel": "제목 *",
+  "enterTitle": "제목을 입력하세요",
+  "additionalDescriptionLabel": "부가 설명",
+  "descriptionHint": "예) 친구와의 여유로운 시간 / 박물관 위주 일정",
+  "destinationLabel": "여행지 *",
+  "enterDestination": "여행지를 입력하세요",
+  "selectStartDate": "출발일 선택",
+  "startDate": "출발일",
+  "selectEndDate": "도착일 선택",
+  "endDate": "도착일",
+  "completeEditButton": "수정 완료",
+
+  "selectStartAndEndDate": "출발일과 도착일을 모두 선택해주세요.",
+  "editCompanionInfoTitle": "동행 정보 수정",
+  "editCompanionInfo": "동행 정보 수정",
+  "titleLabel": "제목 *",
+  "companionDescriptionHint": "예) 조용한 여행 선호해요 / MBTI I이신 분들 환영합니다",
+  "recruitCountLabel": "모집 인원 수 *",
+  "recruitCountError": "2~50 사이 숫자를 입력하세요",
+  "setCompanionConditions": "동행 조건 설정",
+  "genderConditionLabel": "성별 조건",
+  "genderConditionAny": "무관",
+  "genderConditionMaleOnly": "남성만",
+  "genderConditionFemaleOnly": "여성만",
+  "ageUnlimited": "연령 무관",
+  "minAgeLabel": "최소 나이",
+  "maxAgeLabel": "최대 나이",
+  "ageConditionRange": "범위",
+
+  "registerFailed": "등록 실패",
+  "registerTripTitle": "여행 등록",
+  "enterTripInfo": "여행 정보 입력",
+  "tripDescriptionHint": "예) 혼자만의 시간도 존중해요 / 저녁엔 근처 맛집 투어할 예정입니다",
+  "registerTripButton": "여행 등록",
+
+  "registerCompanionTooltip": "동행 등록",
+  "showOnlyOpenCompanions": "모집 중인 동행만 보기",
+  "destinationUndecided": "여행지 미정",
+  "noCompanionsRegistered": "현재 등록된 동행이 없습니다.",
+  "recruitmentComplete": "모집 완료",
+  "recruiting": "모집 중",
+  "personUnit": "명",
+
+
+  "userNotFound": "사용자 정보를 찾을 수 없습니다.",
+  "anonymous": "익명",
+  "registerCompanionTitle": "동행 등록",
+  "enterCompanionInfo": "동행 정보 입력",
+  "registerCompanionButton": "동행 등록",
+
+  "myTravelScheduleTitle": "나의 여행 스케줄",
+  "addPersonalScheduleTooltip": "개인 일정 등록",
+  "noSchedulesForDate": "해당 날짜에 등록된 일정이 없습니다.",
+  "companionSchedulePrefix": "[동행] {scheduleTitle}",
+  "@companionSchedulePrefix": {
+    "description": "일정 목록에서 동행 일정에 붙는 접두사",
+    "placeholders": {
+      "scheduleTitle": {}
+    }
+  },
+
+  "loadFailed": "불러오기 실패: {error}",
+  "@loadFailed": {
+    "description": "데이터 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteScheduleTitle": "일정 삭제",
+  "confirmDeleteSchedule": "정말 이 일정을 삭제하시겠습니까?",
+  "deleteButton": "삭제",
+  "scheduleDeleted": "일정이 삭제되었습니다.",
+  "deleteFailed": "삭제 실패: {error}",
+  "@deleteFailed": {
+    "description": "일정 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "personalScheduleDetailTitle": "개인 일정 상세",
+  "editButton": "수정",
+  "cannotLoadSchedule": "일정을 불러올 수 없습니다.",
+  "additionalDescriptionPrefix": "부가 설명: ",
+  "none": "없음",
+
+  "todayEnjoyableDay": "오늘도 즐거운 하루 되세요!",
+  "weatherCold": "날씨가 많이 춥습니다! 따뜻하게 입고 목도리, 장갑을 챙기세요.",
+  "weatherHot": "날씨가 매우 덥습니다! 시원한 음료와 함께 야외 활동을 자제하고 실내 활동을 추천합니다.",
+  "weatherRain": "비가 오니 우산을 꼭 챙기고, 실내에서 즐길 수 있는 활동을 찾아보세요.",
+  "weatherSnow": "눈이 오니 미끄럼에 주의하시고, 따뜻한 차 한 잔 어떠세요?",
+  "weatherClear": "화창한 날씨입니다! 산책이나 야외 활동을 추천합니다.",
+  "weatherClouds": "흐린 날씨입니다. 가벼운 실내 운동이나 독서를 추천합니다.",
+  "batteryCharging": "\n배터리가 충전 중이네요. 충전하면서 영화 한 편 어떠세요?",
+  "batteryLow": "\n배터리가 부족합니다! 보조배터리를 챙기거나 전원 연결을 권장합니다.",
+  "phoneChargingStation": "휴대폰 충전소",
+  "batteryHalf": "\n배터리가 절반 정도 남았네요. 전력 소모가 적은 활동을 추천합니다.",
+  "wifiConnected": "\nWi-Fi에 연결되어 있습니다. 데이터 걱정 없이 스트리밍 서비스를 이용해 보세요!",
+  "mobileData": "\n모바일 데이터 사용 중입니다. 데이터 소모가 많은 활동은 주의하세요.",
+  "noInternet": "\n인터넷 연결이 없습니다. 오프라인으로 즐길 수 있는 게임이나 미리 다운로드한 콘텐츠를 추천합니다.",
+  "publicWifi": "공공 와이파이",
+
+  "recommendationBasedOnCurrentStatus": "현재 상태 기반 추천",
+  "mapView": "지도 보기",
+
+  "postLoadFailed": "게시물 로드 실패: {error}",
+  "@postLoadFailed": {
+    "description": "게시물 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "createPostTitle": "새 게시물 작성",
+  "postTitleHint": "제목을 입력하세요",
+  "postContentHint": "내용을 입력하세요",
+  "writeButton": "작성",
+  "emptyPostFieldsWarning": "제목과 내용을 입력해주세요.",
+  "postCreatedSuccess": "게시물이 성공적으로 작성되었습니다!",
+  "postCreateFailed": "게시물 작성 실패: {error}",
+  "@postCreateFailed": {
+    "description": "게시물 작성 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noSearchResults": "검색 결과가 없습니다.",
+  "authorAndDate": "작성자: {authorNickname} ({date})",
+  "@authorAndDate": {
+    "description": "게시물 작성자 및 작성일 표시 형식",
+    "placeholders": {
+      "authorNickname": {},
+      "date": {}
+    }
+  },
+  "boardTitle": "게시판",
+  "searchHintText": "검색어를 입력하세요...",
+  "addPostTooltip": "새 게시물 추가",
+
+  "companionNotFound": "동행을 찾을 수 없습니다.",
+  "companionLoadError": "동행 로드 실패: {error}",
+  "@companionLoadError": {
+    "description": "동행 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentsLoadError": "댓글 로드 실패: {error}",
+  "@commentsLoadError": {
+    "description": "댓글 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "requestsLoadError": "신청자 목록 로드 실패: {error}",
+  "@requestsLoadError": {
+    "description": "신청자 목록 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "participantsLoadError": "참여자 목록 로드 실패: {error}",
+  "@participantsLoadError": {
+    "description": "참여자 목록 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "companionApplicationNotPossible": "신청할 수 없습니다 (마감되었거나 정원 초과).",
+  "applicationSentSuccess": "신청이 완료되었습니다!",
+  "applicationSendError": "신청 실패: {error}",
+  "@applicationSendError": {
+    "description": "신청 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "applicationCancelledSuccess": "신청이 취소되었습니다!",
+  "applicationCancelError": "신청 취소 실패: {error}",
+  "@applicationCancelError": {
+    "description": "신청 취소 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "emptyCommentWarning": "댓글 내용을 입력해주세요.",
+  "commentAddedSuccess": "댓글이 추가되었습니다!",
+  "commentAddFailed": "댓글 추가 실패: {error}",
+  "@commentAddFailed": {
+    "description": "댓글 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteCommentTitle": "댓글 삭제",
+  "confirmDeleteComment": "정말 이 댓글을 삭제하시겠습니까?",
+  "deletedComment": "삭제된 댓글입니다.",
+  "commentDeletedSuccess": "댓글이 삭제되었습니다!",
+  "commentDeleteFailed": "댓글 삭제 실패: {error}",
+  "@commentDeleteFailed": {
+    "description": "댓글 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "editCommentTitle": "댓글 수정",
+  "editCommentHint": "댓글을 수정하세요",
+  "commentEditedSuccess": "댓글이 수정되었습니다!",
+  "commentEditFailed": "댓글 수정 실패: {error}",
+  "@commentEditFailed": {
+    "description": "댓글 수정 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "recruitmentClosedWarning": "모집이 마감되었습니다.",
+  "maxParticipantsReached": "최대 인원에 도달했습니다.",
+  "participantAcceptedSuccess": "{userName}님이 수락되었습니다!",
+  "@participantAcceptedSuccess": {
+    "description": "참여자 수락 메시지",
+    "placeholders": {
+      "userName": {}
+    }
+  },
+  "acceptRequestFailed": "신청 수락 실패: {error}",
+  "@acceptRequestFailed": {
+    "description": "신청 수락 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "requestRejectedSuccess": "신청이 거절되었습니다.",
+  "rejectRequestFailed": "신청 거절 실패: {error}",
+  "@rejectRequestFailed": {
+    "description": "신청 거절 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "leaveCompanionTitle": "동행 탈퇴",
+  "confirmLeaveCompanion": "정말 이 동행 그룹을 탈퇴하시겠습니까?",
+  "leaveButton": "탈퇴하기",
+  "leftCompanionSuccess": "동행 그룹을 탈퇴했습니다.",
+  "leaveCompanionFailed": "동행 탈퇴 실패: {error}",
+  "@leaveCompanionFailed": {
+    "description": "동행 탈퇴 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteCompanionTitle": "동행 삭제",
+  "confirmDeleteCompanion": "정말 이 동행 게시물을 삭제하시겠습니까?",
+  "companionDeletedSuccess": "동행 게시물이 삭제되었습니다!",
+  "companionDeleteFailed": "동행 삭제 실패: {error}",
+  "@companionDeleteFailed": {
+    "description": "동행 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "errorText": "오류",
+  "companionDataNotFound": "동행 데이터를 찾을 수 없습니다.",
+  "destinationPrefix": "여행지: {destination}",
+  "@destinationPrefix": {
+    "description": "동행 게시물의 여행지 접두사",
+    "placeholders": {
+      "destination": {}
+    }
+  },
+  "leaderLabel": "리더",
+  "participantsLabel": "현재 인원",
+  "periodLabel": "기간",
+  "contentLabel": "내용",
+  "leaveCompanionButton": "동행 탈퇴",
+  "cancelApplicationButton": "신청 취소",
+  "applyForCompanionButton": "동행 신청",
+  "applicantsListTitle": "신청자 목록",
+  "noApplicants": "현재 신청자가 없습니다.",
+  "acceptButton": "수락",
+  "rejectButton": "거절",
+  "participantsSectionTitle": "참여자",
+  "noParticipants": "아직 참여자가 없습니다.",
+  "commentsSectionTitle": "댓글",
+  "noCommentsYet": "아직 댓글이 없습니다. 첫 댓글을 남겨보세요!",
+  "replyButton": "답글",
+  "deletedCommentIndicator": "(삭제된 댓글입니다)",
+  "replyHint": "답글을 입력하세요...",
+  "writeReplyTitle": "답글 작성",
+  "replyContentHint": "답글 내용을 입력하세요...",
+  "commentInputHint": "댓글을 입력하세요...",
+  "addCommentButton": "댓글 작성",
+  "recruitmentClosed": "모집 마감",
+
+  "initializingMap": "지도를 초기화하는 중...",
+  "placeNotFound": "장소를 찾을 수 없습니다.",
+  "mapLoadError": "지도 로드 실패: {error}",
+  "@mapLoadError": {
+    "description": "지도 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "locationPermissionDenied": "위치 권한이 거부되었습니다.",
+  "locationPermissionDeniedForever": "위치 권한이 영구적으로 거부되었습니다. 권한을 요청할 수 없습니다.",
+  "locationFetchError": "현재 위치를 가져오지 못했습니다: {error}",
+  "@locationFetchError": {
+    "description": "현재 위치 가져오기 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "loadingPlaces": "장소를 로드하는 중...",
+  "placeLoadError": "장소 로드 실패: {error}",
+  "@placeLoadError": {
+    "description": "장소 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "loadingWifi": "공공 와이파이를 로드하는 중...",
+  "wifiMarkerSnippet": "공공 와이파이",
+  "wifiLoadError": "공공 와이파이 로드 실패: {error}",
+  "@wifiLoadError": {
+    "description": "공공 와이파이 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "subcategoryLabel": "세부 카테고리",
+  "freeAdmission": "무료 입장",
+  "paidAdmission": "유료 입장",
+  "encryptedFacilityWarning": "이 시설은 암호화된 시설입니다.",
+  "reviewsTitle": "리뷰",
+  "addPlaceTitle": "새 장소 추가",
+  "placeNameHint": "장소 이름을 입력하세요",
+  "placeAddressHint": "주소를 입력하세요",
+  "addressSearchFailed": "주소 검색에 실패했습니다.",
+  "isEncryptedLabel": "암호화된 시설인가요?",
+  "isFreeLabel": "무료 입장인가요?",
+  "addButton": "추가",
+  "emptyFieldsWarning": "이름과 주소는 비워둘 수 없습니다.",
+  "invalidAddressError": "해당 주소의 좌표를 찾을 수 없습니다.",
+  "placeAddedSuccess": "장소가 성공적으로 추가되었습니다!",
+  "placeAddFailed": "장소 추가 실패: {error}",
+  "@placeAddFailed": {
+    "description": "장소 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "editPlaceTitle": "장소 수정",
+  "placeUpdatedSuccess": "장소가 성공적으로 수정되었습니다!",
+  "placeUpdateFailed": "장소 수정 실패: {error}",
+  "@placeUpdateFailed": {
+    "description": "장소 수정 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deletePlaceTitle": "장소 삭제",
+  "confirmDeletePlace": "정말 이 장소를 삭제하시겠습니까?",
+  "placeDeletedSuccess": "장소가 성공적으로 삭제되었습니다!",
+  "placeDeleteFailed": "장소 삭제 실패: {error}",
+  "@placeDeleteFailed": {
+    "description": "장소 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "reviewLoadFailed": "리뷰 로드 실패: {error}",
+  "@reviewLoadFailed": {
+    "description": "리뷰 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "reviewFieldsEmptyWarning": "별점과 댓글을 입력해주세요.",
+  "reviewAddedSuccess": "리뷰가 성공적으로 추가되었습니다!",
+  "reviewAddFailed": "리뷰 추가 실패: {error}",
+  "@reviewAddFailed": {
+    "description": "리뷰 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "uploadingImage": "이미지를 업로드하는 중...",
+  "imageCompressionFailed": "이미지 압축에 실패했습니다.",
+  "imageUploadSuccess": "이미지가 성공적으로 업로드되었습니다!",
+  "imageUploadFailed": "이미지 업로드 실패: {error}",
+  "@imageUploadFailed": {
+    "description": "이미지 업로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "removedFromFavorites": "즐겨찾기에서 제거되었습니다.",
+  "addedToFavorites": "즐겨찾기에 추가되었습니다!",
+  "favoriteToggleFailed": "즐겨찾기 토글 실패: {error}",
+  "@favoriteToggleFailed": {
+    "description": "즐겨찾기 토글 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "historicalSites": "유적지",
+  "naturalLandmarks": "자연경관",
+  "parksGardens": "공원/정원",
+  "themeParks": "테마파크",
+  "artMuseums": "미술/박물관",
+  "otherAttractions": "기타 관광",
+  "koreanFood": "한식",
+  "westernFood": "양식",
+  "asianFood": "아시아 음식",
+  "cafesDesserts": "카페/디저트",
+  "barsPubs": "바/펍",
+  "otherFood": "기타 음식",
+  "hotels": "호텔",
+  "motels": "모텔",
+  "guesthouses": "게스트하우스",
+  "hanoks": "한옥",
+  "resorts": "리조트",
+  "otherAccommodations": "기타 숙박",
+  "performanceHalls": "공연장",
+  "exhibitionHalls": "전시관",
+  "libraries": "도서관",
+  "bookstores": "서점",
+  "cinemas": "영화관",
+  "otherCulture": "기타 문화",
+  "hikingTrails": "등산로",
+  "cyclingPaths": "자전거 도로",
+  "waterSports": "수상 스포츠",
+  "winterSports": "겨울 스포츠",
+  "indoorSports": "실내 스포츠",
+  "otherLeisure": "기타 레저",
+  "mapScreenTitle": "지도",
+  "searchPlacesHint": "장소를 검색하세요...",
+  "allCategories": "모든 카테고리",
+  "addPlaceTooltip": "장소 추가",
+  "reviewHint": "리뷰를 작성하세요...",
+  "uploadImageTooltip": "이미지 업로드",
+  "addReviewButton": "리뷰 작성",
+  "noReviewsYet": "아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요!",
+  "etcCategory": "기타",
+  "categoryLabel": "카테고리",
+  "addressLabel": "주소",
+  "installationAgencyLabel": "설치 기관",
+  "postDetailTitle": "게시물 상세",
+  "authorLabel": "작성자",
+  "commentsTitle": "댓글",
+
+  "replyPrefix": "답글",
+  "enterReplyHint": "답글을 입력하세요...",
+  "postButton": "작성",
+  "enterCommentHint": "댓글을 입력하세요...",
+  "failedToLoadComments": "댓글 로드 실패: {error}",
+  "@failedToLoadComments": {
+    "description": "댓글 로드 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentEmptyWarning": "댓글은 비워둘 수 없습니다.",
+  "failedToAddComment": "댓글 추가 실패: {error}",
+  "@failedToAddComment": {
+    "description": "댓글 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "commentUpdatedSuccess": "댓글이 성공적으로 수정되었습니다!",
+  "failedToUpdateComment": "댓글 수정 실패: {error}",
+  "@failedToUpdateComment": {
+    "description": "댓글 수정 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "failedToDeleteComment": "댓글 삭제 실패: {error}",
+  "@failedToDeleteComment": {
+    "description": "댓글 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "replyEmptyWarning": "답글은 비워둘 수 없습니다.",
+  "replyAddedSuccess": "답글이 성공적으로 추가되었습니다!",
+  "failedToAddReply": "답글 추가 실패: {error}",
+  "@failedToAddReply": {
+    "description": "답글 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "replyUpdatedSuccess": "답글이 성공적으로 수정되었습니다!",
+  "failedToUpdateReply": "답글 수정 실패: {error}",
+  "@failedToUpdateReply": {
+    "description": "답글 수정 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "deleteReplyTitle": "답글 삭제",
+  "confirmDeleteReply": "정말 이 답글을 삭제하시겠습니까?",
+  "replyDeletedSuccess": "답글이 성공적으로 삭제되었습니다!",
+  "failedToDeleteReply": "답글 삭제 실패: {error}",
+  "@failedToDeleteReply": {
+    "description": "답글 삭제 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noReviews": "리뷰 없음",
+
+  "mapScreenTitle": "지도",
+  "searchButton": "검색",
+  "filterButton": "필터",
+  "addPlaceTooltip": "장소 추가",
+
+  "gettingCurrentLocation": "현재 위치 가져오는 중...",
+  "syncingFirestoreData": "Firestore 데이터 동기화 중...",
+  "loadingKakaoPlaces": "카카오 장소 로드 중...",
+  "loadingPublicWifiHotspots": "공공 Wi-Fi 핫스팟 로드 중...",
+  "locationServiceDisabled": "위치 서비스가 비활성화되어 있습니다.",
+  "locationPermissionDenied": "위치 권한이 거부되었습니다.",
+  "locationPermissionDeniedForever": "위치 권한이 영구적으로 거부되었습니다. 설정에서 변경해주세요.",
+  "errorOccurred": "오류 발생",
+  "noPlaceFound": "장소를 찾을 수 없습니다.",
+  "noPlaceFoundForKeyword": "'{keyword}'에 해당하는 장소를 찾을 수 없습니다.",
+  "@noPlaceFoundForKeyword": {
+    "description": "특정 키워드에 대해 장소를 찾을 수 없을 때의 메시지",
+    "placeholders": {
+      "keyword": {}
+    }
+  },
+  "failedToSearchPlace": "장소 검색 실패: {error}",
+  "@failedToSearchPlace": {
+    "description": "장소 검색 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "addressLabel": "주소",
+  "categoryLabel": "카테고리",
+  "subcategoryLabel": "세부 카테고리",
+  "encryptedLocation": "암호화된 위치",
+  "freeAdmission": "무료 입장",
+  "noReviewsYet": "아직 리뷰가 없습니다.",
+  "reviewsTitle": "리뷰",
+  "writeReviewTitle": "리뷰 작성",
+  "reviewInputHint": "리뷰를 입력하세요...",
+  "selectImageButton": "이미지 선택",
+  "submitReviewButton": "리뷰 제출",
+  "closeButton": "닫기",
+  "reviewAddedSuccess": "리뷰가 성공적으로 추가되었습니다!",
+  "failedToAddReview": "리뷰 추가 실패: {error}",
+  "@failedToAddReview": {
+    "description": "리뷰 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+
+  "filterByCategories": "카테고리별 필터",
+  "invalidAddress": "유효하지 않은 주소입니다. 다시 시도해주세요.",
+  "failedToAddPlace": "장소 추가 실패: {error}",
+  "@failedToAddPlace": {
+    "description": "장소 추가 실패 에러 메시지",
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "categoryLandmark": "명소",
+  "categoryAccommodation": "숙박",
+  "categoryRestaurant": "음식점",
+  "categoryTransportation": "교통",
+  "categoryEtc": "기타",
+
+  "subcategoryHistory": "역사",
+  "subcategoryNature": "자연",
+  "subcategoryCulture": "문화",
+  "subcategoryLeisure": "레저",
+  "subcategoryHotel": "호텔",
+  "subcategoryMotel": "모텔",
+  "subcategoryGuestHouse": "게스트하우스",
+  "subcategoryResort": "리조트",
+  "subcategoryCamping": "캠핑",
+  "subcategoryKoreanFood": "한식",
+  "subcategoryChineseFood": "중식",
+  "subcategoryJapaneseFood": "일식",
+  "subcategoryWesternFood": "양식",
+  "subcategoryCafe": "카페",
+  "subcategoryBusTerminal": "버스 터미널",
+  "subcategoryTrainStation": "기차역",
+  "subcategoryAirport": "공항",
+  "subcategoryPort": "항구",
+  "subcategoryConvenience": "편의시설",
+  "subcategoryPublicInstitution": "공공기관",
+  "subcategoryHospital": "병원",
+  "subcategoryPoliceStation": "경찰서",
+
+  "dataSyncMessage": "데이터 동기화 중...",
+  "failedToGetLocation": "위치 정보를 가져오는 데 실패했습니다: {error}",
+  "failedToLoadMarkerIcons": "마커 아이콘 로드 실패: {error}",
+  "dataSyncSkipped": "데이터 동기화 건너뜀. 기존 데이터를 로드합니다.",
+  "pharmacySyncing": "약국 위치 동기화 중...",
+  "policeStationSyncing": "경찰서/파출소 동기화 중...",
+  "atmSyncing": "ATM기 위치 동기화 중...",
+  "bankSyncing": "은행 위치 동기화 중...",
+  "currencyExchangeSyncing": "환전소 위치 동기화 중...",
+  "publicToiletSyncing": "공중 화장실 동기화 중...",
+  "lockerSyncing": "물품 보관함 동기화 중...",
+  "publicWifiSyncing": "공공 와이파이 동기화 중...",
+  "cafeSyncing": "카페 동기화 중...",
+  "restaurantSyncing": "음식점 동기화 중...",
+  "landmarkSyncing": "랜드마크 동기화 중...",
+  "dataSyncComplete": "데이터 동기화 완료",
+  "dataSyncFailed": "데이터 동기화 실패: 네트워크 연결을 확인하거나 나중에 다시 시도해주세요. (에러: {error})",
+  "failedToUpdateFavorites": "찜 목록 업데이트 중 오류가 발생했습니다. 네트워크를 확인해주세요.",
+  "placeDetailsTitle": "장소 세부 정보",
+  "address": "주소: {address}",
+  "noAddressInfo": "주소 정보 없음",
+  "averageRating": "평균 별점: {rating}",
+  "comments": "코멘트:",
+  "noComments": "코멘트가 없습니다.",
+  "commentAuthor": "작성자: {nickname}",
+  "loading": "로딩 중...",
+  "deleteReview": "리뷰 삭제",
+  "deleteReviewConfirm": "이 리뷰를 삭제하시겠습니까?",
+  "cancel": "취소",
+  "delete": "삭제",
+  "addComment": "코멘트 추가",
+  "failedToLoadUserInfo": "사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.",
+  "rating": "별점: {rating}",
+  "attachPhoto": "사진 첨부",
+  "failedToUploadImage": "이미지 업로드에 실패했습니다. 다시 시도해주세요.",
+  "newPlaceAdded": "{subcategory} 추가",
+  "placeNameRequired": "장소 이름 (필수)",
+  "addressRequired": "주소 (필수, 예: 대학로 52-1)",
+  "freePaid": "무료/유료:",
+  "free": "무료",
+  "paid": "유료",
+  "add": "추가",
+  "searchMap": "지도 검색",
+  "searchPlaceholder": "장소 이름 또는 주소를 입력하세요",
+  "search": "검색",
+  "close": "닫기",
+  "refreshData": "데이터 동기화",
+  "selectLocation": "위치 선택",
+  "confirm": "확인",
+  "placeNameAndAddressRequired": "장소 이름과 주소는 필수입니다.",
+  "searching": "'{query}' 검색 중...",
+  "@@searching": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "searchResultsDisplayed": "'{query}'에 대한 결과 표시: {placeName}",
+  "noSearchResultsForQuery": "'{query}'에 대한 검색 결과가 없습니다.",
+  "mapSearchError": "지도 검색 실패: {error}",
+  "searchFailed": "검색 실패: {error}",
+  "currentLocation": "현재 위치",
+  "mapLoadingWait": "지도를 불러오는 중입니다. 잠시만 기다려주세요...",
+
+  "mapTitle": "지도",
+  "hospital": "병원",
+  "pharmacy": "약국",
+  "policeStation": "경찰서",
+  "atm": "ATM",
+  "bank": "은행",
+  "currencyExchange": "환전소",
+  "publicRestroom": "공중화장실",
+  "locker": "물품 보관함",
+  "cafe": "카페",
+  "restaurant": "음식점",
+  "landmark": "랜드마크",
+  "addPlace": "장소 추가",
+  "publicwifi": "공공와이파이",
+
+  "home": "홈",
+  "map": "지도",
+  "board": "게시판",
+  "myPage": "마이페이지",
+  "categoryTitle": "카테고리 선택",
+  "companionRecruitment": "동행 모집",
+  "viewMorePosts": "더 많은 게시물 보기",
+  "author": "작성자",
+
+  "hotspotByPopularity": "인기 핫스팟",
+  "viewMoreHotspots": "더 많은 핫스팟 보기",
+  "weatherInfo": "날씨 정보",
+  "disasterAlerts": "재난 알림",
+
+  "recommendationTitle": "현재 상태 기반 추천",
+  "recommendationText": "비가 오니 실내 활동을 추천드려요",
+  "indoorCafeRecommendation": "실내 카페 추천",
+  "hotspotByLikes": "인기 핫스팟",
+  "noHotspots": "인기 장소가 없습니다",
+  "recentPosts": "최근 게시물",
+  "noPosts": "게시물이 없습니다",
+  "findCompanion": "동행자 구해요 👋",
+  "noCompanionsRecruiting": "현재 모집 중인 동행이 없습니다.",
+  "viewMoreCompanions": "더 많은 동행 보기...",
+  "newDisasterMessage":"새 재난 문자",
+  "selectLanguage":"언어 선택",
+
+  "addNewPlaceTitle":"새 장소 추가",
+  "selectCategoryHint":"카테고리 선택",
+  "selectLocationButton":"위치 선택",
+
+  "selectLocationTitle":"위치 선택",
+  "selectLocationconfimButton":"확인",
+  "confirmButton":"확인",
+  "myAddedPlaces": "내가 추가한 장소",
+  "noPlaceName": "장소명 없음",
+  "approvalComplete": "승인 완료",
+  "underReview": "검토 중",
+  "favoritePlaces": "즐겨찾기 한 장소",
+  "nicknameLabel": "닉네임",
+
+  "ageLabel": "나이",
+  "contactLabel": "연락처",
+
+  "deleteAccountTitle": "회원 탈퇴",
+  "confirmDeleteAccount": "정말 탈퇴하시겠습니까? 모든 데이터가 삭제됩니다.",
+
+  "myPageTitle": "마이페이지",
+  "travelSchedule": "여행 스케줄",
+  "myPosts": "내가 쓴 글 조회",
+  "commentedPosts": "댓글 단 글 조회",
+  "noNickname": "닉네임 없음",
+  "notEntered": "미입력",
+
+  "noTitle": "제목 없음",
+  "noContent": "내용 없음",
+  "unknown": "알 수 없음",
+  "postLoadFailed": "게시물 목록을 불러오는 데 실패했습니다: {error}",
+  "@postLoadFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "noSearchResults": "검색 결과가 없습니다.",
+  "deletePostTitle": "게시물 삭제",
+  "confirmDeletePost": "정말 이 게시물을 삭제하시겠습니까?",
+  "cancelButton": "취소",
+  "deleteButton": "삭제",
+  "postDeleteFailed": "게시물 삭제 중 오류가 발생했습니다.",
+  "addPostTitle": "새 게시물 작성",
+
+  "createButton": "작성",
+  "postSaveFailed": "게시물 저장 중 오류가 발생했습니다.",
+  "enterTitleAndContent": "제목과 내용을 입력해주세요.",
+
+  "category_emergency": "응급&안전",
+  "category_finance": "금융&환전",
+  "category_facility": "편의 시설",
+  "category_tourism": "관광",
+  "subcategory_hospital": "병원",
+  "subcategory_pharmacy": "약국",
+  "subcategory_police": "경찰서",
+  "subcategory_atm": "ATM",
+  "subcategory_bank": "은행",
+  "subcategory_currency_exchange": "환전소",
+  "subcategory_toilet": "공중 화장실",
+  "subcategory_locker": "물품 보관함",
+  "subcategory_charging": "휴대폰 충전소",
+  "subcategory_wifi": "공공 와이파이",
+  "subcategory_cafe": "카페",
+  "subcategory_restaurant": "음식점",
+  "subcategory_landmark": "랜드마크"
+
+}
