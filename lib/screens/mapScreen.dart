@@ -18,7 +18,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:typed_data';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
 class MapScreen extends StatefulWidget {
@@ -61,7 +61,6 @@ class _MapScreenState extends State<MapScreen> {
   bool _isMapReady = false; // 지도 준비 상태
   String? _lastProcessedPlaceId; // 마지막 처리된 장소 ID
   bool _isMapVisible = false; // 지도 표시 상태
-
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -1835,58 +1834,6 @@ void _showSearchDialog() {
 // 분류: 디자인
 @override
 Widget build(BuildContext context) {
-  final appLocalizations = AppLocalizations.of(context)!;
-
-
-  String _getLocalizedMainCategory(String key, AppLocalizations local) {
-    final local = AppLocalizations.of(context)!;
-    switch (key) {
-      case '응급&안전':
-        return local.category_emergency;
-      case '금융&환전':
-        return local.category_finance;
-      case '편의 시설':
-        return local.category_facility;
-      case '관광':
-        return local.category_tourism;
-      default:
-        return key;
-    }
-  }
-
-  String _getLocalizedSubCategory(String key) {
-    final local = AppLocalizations.of(context)!;
-    switch (key) {
-      case '병원':
-        return local.subcategory_hospital;
-      case '약국':
-        return local.subcategory_pharmacy;
-      case '경찰서':
-        return local.subcategory_police;
-      case 'ATM':
-        return local.subcategory_atm;
-      case '은행':
-        return local.subcategory_bank;
-      case '환전소':
-        return local.subcategory_currency_exchange;
-      case '공중 화장실':
-        return local.subcategory_toilet;
-      case '물품 보관함':
-        return local.subcategory_locker;
-      case '휴대폰 충전소':
-        return local.subcategory_charging;
-      case '공공 와이파이':
-        return local.subcategory_wifi;
-      case '카페':
-        return local.subcategory_cafe;
-      case '음식점':
-        return local.subcategory_restaurant;
-      case '랜드마크':
-        return local.subcategory_landmark;
-      default:
-        return key;
-    }
-  }
   return Scaffold(
     appBar: AppBar(
       title: const Text('지도'),
@@ -1947,7 +1894,7 @@ Widget build(BuildContext context) {
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
-                              Text(_getLocalizedSubCategory(subCategory)),
+                              Text(subCategory),
                               const Spacer(), // 텍스트와 이미지 사이를 유연하게 조정
                               FutureBuilder<Widget>(
                                 future: _buildMarkerImage(subCategory),
@@ -1980,9 +1927,7 @@ Widget build(BuildContext context) {
                             ),
                           ],
                         ),
-                        child: Text(
-                          _getLocalizedMainCategory(mainCategory, AppLocalizations.of(context)!),
-                        ),
+                        child: Text(mainCategory),
                       ),
                     ),
                   );
@@ -2092,9 +2037,6 @@ String? _getCategoryImagePath(String category) {
 // 역할: 각 카테고리에 맞는 마커 아이콘 제공
 // 분류: 로직
 BitmapDescriptor? _getCategoryIcon(String category) {
-
-  final AppLocalizations appLocalizations = AppLocalizations.of(context)!;
-
   switch (category) {
     case '병원':
       return hospitalIcon;
@@ -2126,7 +2068,6 @@ BitmapDescriptor? _getCategoryIcon(String category) {
       return null;
   }
 }
-
 }
 Future<List<Place>> searchPlacesFromFirestore(String keyword) async {
   final firestore = FirebaseFirestore.instance;
