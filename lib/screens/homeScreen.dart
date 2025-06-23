@@ -12,9 +12,14 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'notificationScreen.dart';
 import 'companionDetailScreen.dart'; // 기존에 작성한 동행 상세 페이지 가져오기
+import '../companionCard.dart'; // This import is redundant as CompanionCard is defined in this file.
+import 'companionListScreen.dart'; // This import is redundant.
+import 'weatherScreen.dart';
+import 'package:app_for_traveler/language_selection_widget.dart'; // 이 경로가 정확한지 확인하세요.
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'weatherScreen.dart';
 import 'package:app_for_traveler/screens/companionListScreen.dart';
-
 
 
 class CompanionCard extends StatelessWidget {
@@ -43,6 +48,7 @@ class CompanionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('yyyy.MM.dd');
     final dateRange = '${dateFormat.format(startDate)} ~ ${dateFormat.format(endDate)}';
+    final appLocalizations = AppLocalizations.of(context)!;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -65,7 +71,7 @@ class CompanionCard extends StatelessWidget {
                 Text('$currentCount / $maxCount'),
                 const Spacer(),
                 if (isClosed)
-                  const Text('모집 마감', style: TextStyle(color: Colors.red)),
+                  Text(appLocalizations.recruitmentClosed, style: const TextStyle(color: Colors.red)), // Localized
               ],
             ),
             const SizedBox(height: 6),
@@ -131,18 +137,19 @@ class _TravelMateSectionState extends State<TravelMateSection> {
 
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text('동행자 구해요 👋', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(appLocalizations.findCompanion, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Localized
         ),
         const SizedBox(height: 12),
         if (_companions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text('현재 모집 중인 동행이 없습니다.', style: TextStyle(color: Colors.grey)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(appLocalizations.noCompanions, style: const TextStyle(color: Colors.grey)), // Localized
           )
         else
           ..._companions.map((c) => GestureDetector(
@@ -180,7 +187,7 @@ class _TravelMateSectionState extends State<TravelMateSection> {
                 ),
               );
             },
-            child: const Text('더 많은 동행 보기...', style: TextStyle(fontSize: 14)),
+            child: Text(appLocalizations.viewMoreCompanions, style: const TextStyle(fontSize: 14)), // Localized
           ),
         ),
       ],
@@ -282,15 +289,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showDisasterAlert(String message) {
+    final appLocalizations = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('📢 New disaster message received'),
+        title: Text(appLocalizations.newDisasterMessage), // Localized
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('확인'),
+            child: Text(appLocalizations.confirm), // Localized
           ),
         ],
       ),
@@ -409,16 +417,50 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedPlaceId = null;
       }
     });
+
+  }
+
+  void _showLanguageSelectionDialog(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(appLocalizations.selectLanguage), // Localized
+          //content: const LanguageSelectionWidget(), // 언어 선택 위젯 삽입
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+              },
+              child: Text(appLocalizations.close), // Localized
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // AppLocalizations 인스턴스를 build 메서드 내에서 가져옵니다.
+    final appLocalizations = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('여행 도우미', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.grey[100], //세연
-        foregroundColor: Colors.black, //세연
+        title: Text(
+          appLocalizations.appTitle, // '여행 도우미'를 다국어 처리
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.grey[100],
+        foregroundColor: Colors.black,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.language), // 지구본 아이콘
+            onPressed: () {
+              _showLanguageSelectionDialog(context); // 다이얼로그 팝업
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.sunny),
             onPressed: () {
@@ -432,9 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.notifications),
-            onPressed: () async {
-              await _loadAllAlerts();
-              if (!mounted) return;
+            onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -451,7 +491,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _selectedIndex == 0
-          ? HomeContent(currentUserId: widget.currentUserId) // 🔥 여기에 전달
+          ? HomeContent(
+        currentUserId: widget.currentUserId,
+        appLocalizations: appLocalizations, // HomeContent에 appLocalizations 전달
+      )
           : _selectedIndex == 1
           ? MapScreen(
         currentUserId: widget.currentUserId,
@@ -474,11 +517,23 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '홈'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: '지도'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum), label: '게시판'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '마이페이지'),
+        items: [ // const 키워드 제거
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home),
+            label: appLocalizations.home, // '홈' 다국어 처리
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.map),
+            label: appLocalizations.map, // '지도' 다국어 처리
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.forum),
+            label: appLocalizations.board, // '게시판' 다국어 처리
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person),
+            label: appLocalizations.myPage, // '마이페이지' 다국어 처리
+          ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.blue,
@@ -499,8 +554,13 @@ class _HomeScreenState extends State<HomeScreen> {
 // 역할: 추천, 인기 장소, 최근 게시물 표시
 class HomeContent extends StatefulWidget {
   final String currentUserId;
-  const HomeContent({super.key, required this.currentUserId});
+  final AppLocalizations appLocalizations; // <--- 이 부분 추가
 
+  const HomeContent({
+    Key? key,
+    required this.currentUserId,
+    required this.appLocalizations, // <--- 이 부분 추가
+  }) : super(key: key);
   @override
   _HomeContentState createState() => _HomeContentState();
 }
@@ -612,6 +672,7 @@ class _HomeContentState extends State<HomeContent> {
   // 분류: 디자인
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -639,18 +700,18 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  '현재 상태 기반 추천',
-                  style: TextStyle(
+                Text(
+                  appLocalizations.recommendationTitle, // '현재 상태 기반 추천' 다국어 처리
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '비가 오니 실내 활동을 추천드려요!',
-                  style: TextStyle(fontSize: 18),
+                Text(
+                  appLocalizations.recommendationText, // '비가 오니 실내 활동을 추천드려요!' 다국어 처리
+                  style: const TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
@@ -663,7 +724,7 @@ class _HomeContentState extends State<HomeContent> {
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     textStyle: const TextStyle(fontSize: 18),
                   ),
-                  child: const Text('실내 카페 추천 지도 보기'),
+                  child: Text(appLocalizations.indoorCafeRecommendation), // '실내 카페 추천 지도 보기' 다국어 처리
                 ),
               ],
             ),
@@ -677,23 +738,26 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '인기 핫스팟 (찜 수 기준 Top 10)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  appLocalizations.hotspotByLikes, // '인기 핫스팟 (찜 수 기준 Top 10)' 다국어 처리
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 180,
                   child: _topPlaces.isEmpty
-                      ? const Center(child: Text('인기 장소가 없습니다.'))
+                      ? Center(child: Text(appLocalizations.noHotspots)) // '인기 장소가 없습니다.' 다국어 처리
                       : ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: _topPlaces.length,
                     itemBuilder: (context, index) {
                       final place = _topPlaces[index];
+                      // HotspotCard 내부에 표시되는 텍스트도 다국어 처리 필요
+                      // HotspotCard 위젯 자체를 수정하거나, 필요한 텍스트를 인수로 전달해야 합니다.
+                      // 예시: HotspotCard(title: Localizations.localeOf(context).languageCode == 'ko' ? place['name_ko'] : place['name_en'], ...)
                       return HotspotCard(
-                        title: place['name'],
-                        description: place['description'],
+                        title: place['name'], // HotspotCard가 내부적으로 다국어 처리한다고 가정하거나, 여기에 직접 처리
+                        description: place['description'], // HotspotCard가 내부적으로 다국어 처리한다고 가정하거나, 여기에 직접 처리
                         averageRating: place['averageRating'],
                         latestReview: place['latestReview'],
                         onTap: () {
@@ -712,6 +776,7 @@ class _HomeContentState extends State<HomeContent> {
           ),
           const SizedBox(height: 30),
 
+          // TravelMateSection은 별도의 위젯이므로, 해당 위젯 파일에서 다국어 처리 필요
           TravelMateSection(currentUserId: widget.currentUserId),
           const SizedBox(height: 30),
           // 최근 게시물 섹션: 최신 3개 게시물 표시 및 게시판 이동
@@ -736,15 +801,15 @@ class _HomeContentState extends State<HomeContent> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '최근 게시물',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  appLocalizations.recentPosts, // '최근 게시물' 다국어 처리
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 _recentPosts.isEmpty
-                    ? const Text(
-                  '게시물이 없습니다.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ? Text(
+                  appLocalizations.noPosts, // '게시물이 없습니다.' 다국어 처리
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 )
                     : ListView.separated(
                   shrinkWrap: true,
@@ -754,13 +819,15 @@ class _HomeContentState extends State<HomeContent> {
                     final post = _recentPosts[index];
                     return ListTile(
                       title: Text(
-                        post['title'] ?? '제목 없음',
+                        post['title'] ?? appLocalizations.noTitle, // '제목 없음' 다국어 처리
+
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        '작성자: ${post['authorNickname'] ?? '알 수 없음'}',
+                        '${appLocalizations.author}: ${post['authorNickname'] ?? appLocalizations.unknown}', // '작성자', '알 수 없음' 다국어 처리
+
                         style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       onTap: () {
@@ -781,7 +848,7 @@ class _HomeContentState extends State<HomeContent> {
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     textStyle: const TextStyle(fontSize: 16),
                   ),
-                  child: const Text('더 많은 게시물 보기'),
+                  child: Text(appLocalizations.viewMorePosts), // '더 많은 게시물 보기' 다국어 처리
                 ),
               ],
             ),

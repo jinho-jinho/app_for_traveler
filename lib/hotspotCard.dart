@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+// ──────────────────────────────────────────────────────────────────
+// AppLocalizations 임포트 추가
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+// ──────────────────────────────────────────────────────────────────
 
 class HotspotCard extends StatelessWidget {
   final String title;
@@ -19,6 +23,9 @@ class HotspotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ──────────────────────────────────────────────────────────────────
+    final appLocalizations = AppLocalizations.of(context)!;
+    // ──────────────────────────────────────────────────────────────────
     return GestureDetector(
       onTap: onTap, // 카드 클릭 시 콜백 실행
       child: Container(
@@ -55,6 +62,24 @@ class HotspotCard extends StatelessWidget {
             Text(
               description,
               style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            // 평균 별점 표시
+            RatingBarIndicator(
+              rating: averageRating,
+              itemBuilder: (context, index) => const Icon(
+                Icons.star,
+                color: Colors.amber,
+              ),
+              itemCount: 5,
+              itemSize: 16.0,
+              direction: Axis.horizontal,
+            ),
+            const SizedBox(height: 8),
+            // 가장 최근 리뷰
+            Text(
+              latestReview != null ? latestReview! : appLocalizations.noReviews, // 다국어 적용
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
