@@ -19,28 +19,28 @@ class DisasterApiService {
 
   /// 외부에서 호출: 현재 위치 기반 지역 재난문자 + 번역 포함
   static Future<List<Map<String, dynamic>>> fetchTodayDisasterMessages() async {
-  try {
-    //  현재 위치 가져오기
-    // final Position pos = await Geolocator.getCurrentPosition(
-    //   desiredAccuracy: LocationAccuracy.high,
-    // );
+    try {
+      //  현재 위치 가져오기
+      // final Position pos = await Geolocator.getCurrentPosition(
+      //   desiredAccuracy: LocationAccuracy.high,
+      // );
 
-    //  시도(지역명) 가져오기
-    // final String regionName = await _getRegionName(pos.latitude, pos.longitude);
+      //  시도(지역명) 가져오기
+      // final String regionName = await _getRegionName(pos.latitude, pos.longitude);
 
-    //  해당 지역 재난문자 조회
-    final List<Map<String, dynamic>> messages = await _fetchByRegion();//regionName);
+      //  해당 지역 재난문자 조회
+      final List<Map<String, dynamic>> messages = await _fetchByRegion();//regionName);
 
-    if (messages.isEmpty) return [];
+      if (messages.isEmpty) return [];
 
-    //  번역
-    final List<Map<String, dynamic>> translated = await _translateMessages(messages);
-    return translated;
-  } catch (e) {
-    print('🚨 재난문자 조회 실패: $e');
-    return [];
+      //  번역
+      final List<Map<String, dynamic>> translated = await _translateMessages(messages);
+      return translated;
+    } catch (e) {
+      print('🚨 재난문자 조회 실패: $e');
+      return [];
+    }
   }
-}
 
 
   // /// 현재 위치 좌표 → 행정 시도 이름 (예: 서울특별시)
@@ -71,7 +71,7 @@ class DisasterApiService {
         '&pageNo=1'
         '&returnType=json'
         '&crtDt=$date'
-        );//'&rgnNm=${Uri.encodeComponent(regionName)}');
+    );//'&rgnNm=${Uri.encodeComponent(regionName)}');
 
     final response = await http.get(uri);
 

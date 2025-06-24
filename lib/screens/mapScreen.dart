@@ -18,6 +18,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'dart:convert';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:typed_data';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // 이 경로가 정확한지 확인하세요.
 
 // 지도 화면 StatefulWidget
 // 역할: Google Maps로 장소 표시, 사용자 장소 추가 및 리뷰 관리
@@ -1856,6 +1857,60 @@ class _MapScreenState extends State<MapScreen> {
 // 분류: 디자인
   @override
   Widget build(BuildContext context) {
+
+
+    String _getLocalizedMainCategory(String key) {
+      final local = AppLocalizations.of(context)!;
+
+      switch (key) {
+        case '응급&안전':
+          return local.category_emergency;
+        case '금융&환전':
+          return local.category_finance;
+        case '편의 시설':
+          return local.category_facility;
+        case '관광':
+          return local.category_tourism;
+        default:
+          return key;
+      }
+    }
+
+    String _getLocalizedSubCategory(String key) {
+
+      final local = AppLocalizations.of(context)!;
+      switch (key) {
+        case '병원':
+          return local.subcategory_hospital;
+        case '약국':
+          return local.subcategory_pharmacy;
+        case '경찰서':
+          return local.subcategory_police;
+        case 'ATM':
+          return local.subcategory_atm;
+        case '은행':
+          return local.subcategory_bank;
+        case '환전소':
+          return local.subcategory_currency_exchange;
+        case '공중 화장실':
+          return local.subcategory_toilet;
+        case '물품 보관함':
+          return local.subcategory_locker;
+        case '휴대폰 충전소':
+          return local.subcategory_charging;
+        case '공공 와이파이':
+          return local.subcategory_wifi;
+        case '카페':
+          return local.subcategory_cafe;
+        case '음식점':
+          return local.subcategory_restaurant;
+        case '랜드마크':
+          return local.subcategory_landmark;
+        default:
+          return key;
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('지도'),
@@ -1917,7 +1972,7 @@ class _MapScreenState extends State<MapScreen> {
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(subCategory),
+                                Text(_getLocalizedSubCategory(subCategory)),
                                 const Spacer(),
                                 FutureBuilder<Widget>(
                                   future: _buildMarkerImage(subCategory),
@@ -1950,7 +2005,7 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ],
                           ),
-                          child: Text(mainCategory),
+                          child: Text(_getLocalizedMainCategory(mainCategory)),
                         ),
                       ),
                     );

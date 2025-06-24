@@ -99,10 +99,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
                 title: Text(
                   isDisaster
-                      ? (notif['message'] ?? 'Unknown disaster message')
+                      ? ((notif['message']?.toString().trim().isNotEmpty ?? false)
+                      ? notif['message']
+                      : notif['msg'] ?? '📢 재난 메시지 수신 (내용 없음)')
                       : '${notif['nickname'] ?? 'Someone'} commented on your post',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
+
                 subtitle: Text(
                   _formatTimestamp(timestamp),
                   style: const TextStyle(fontSize: 12, color: Colors.grey),

@@ -4,6 +4,7 @@ import 'package:app_for_traveler/screens/homeScreen.dart';
 // ──────────────────────────────────────────────────────────────────
 // AppLocalizations 임포트 추가
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // 이 경로가 정확한지 확인하세요.
+
 // ──────────────────────────────────────────────────────────────────
 
 class LoginScreen extends StatefulWidget {
